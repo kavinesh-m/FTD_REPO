@@ -213,13 +213,6 @@
         mode: '0644'
       delegate_to: localhost
 
-    # - name: Generate HTML Report
-    #   template:
-    #     src: rule_management_report.j2
-    #     dest: "{{ report_output_dir }}/rule_management_{{ timestamp }}.html"
-    #     mode: '0644'
-    #   delegate_to: localhost
-
     - name: Log Rule Management Activity
       lineinfile:
         path: "{{ log_output_dir }}/rule_management.log"

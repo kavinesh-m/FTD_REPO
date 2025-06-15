@@ -217,13 +217,6 @@
         mode: '0644'
       delegate_to: localhost
 
-    # - name: Generate Packet Tracer Report
-    #   template:
-    #     src: packet_tracer_report.j2
-    #     dest: "{{ report_output_dir }}/packet_tracer_{{ timestamp }}.html"
-    #     mode: '0644'
-    #   delegate_to: localhost
-
     - name: Save Detailed Trace Log
       copy:
         content: |

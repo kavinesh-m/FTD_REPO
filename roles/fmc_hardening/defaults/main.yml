@@ -1,0 +1,20 @@
+---
+# FMC Hardening Role Default Variables
+
+# API settings
+api_timeout: 30
+api_retries: 3
+api_delay: 5
+validate_certs: false
+fmc_protocol: "https"
+
+# Report generation
+generate_html_reports: true
+
+# Default extraction settings
+extract_system_info: true
+extract_access_policies: true
+extract_network_policies: true
+extract_devices: true
+extract_network_objects: true
+extract_port_objects: true

@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  author: FMC Automation Team
+  description: Common role providing shared functionality for FMC automation
+  license: MIT
+  min_ansible_version: "2.18"
+
+dependencies: []

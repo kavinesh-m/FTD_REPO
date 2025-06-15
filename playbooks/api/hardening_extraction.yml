@@ -121,13 +121,6 @@
         mode: '0644'
       delegate_to: localhost
 
-    # - name: Generate Hardening Configuration Report
-    #   template:
-    #     src: ../templates/hardening_report.j2
-    #     dest: "{{ report_output_dir }}/hardening_report_{{ timestamp }}.html"
-    #     mode: '0644'
-    #   delegate_to: localhost
-
     - name: Log Extraction Summary
       lineinfile:
         path: "{{ log_output_dir }}/hardening_extraction.log"

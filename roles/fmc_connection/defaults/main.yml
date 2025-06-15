@@ -1,0 +1,17 @@
+---
+# FMC Connection Role Default Variables
+
+# Connection settings
+api_timeout: 30
+api_retries: 3
+api_delay: 5
+validate_certs: false
+fmc_protocol: "https"
+
+# Behavior settings
+fail_on_connection_error: true
+
+# Default values for connection test results
+fmc_connection_test_passed: false
+fmc_auth_token: ""
+fmc_domain_uuid: ""

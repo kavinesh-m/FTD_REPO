@@ -1,0 +1,30 @@
+---
+# FMC Packet Tracer Role Default Variables
+
+# API settings
+api_timeout: 30
+api_retries: 3
+api_delay: 5
+validate_certs: false
+fmc_protocol: "https"
+
+# Packet tracer default settings
+default_protocol: "TCP"
+default_source_port: 80
+default_dest_port: 443
+
+# Debug settings
+debug_mode: false
+
+# Report generation
+generate_html_reports: true
+
+# Required parameters (must be provided)
+# source_ip: ""
+# dest_ip: ""
+
+# Optional parameters
+# source_port: ""
+# dest_port: ""
+# protocol: ""
+# device_id: ""

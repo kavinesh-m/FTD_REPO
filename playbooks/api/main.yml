@@ -54,13 +54,6 @@
         - source_ip is defined
         - dest_ip is defined
 
-    - name: Generate Master Summary Report
-      template:
-        src: master_summary_report.j2
-        dest: "{{ report_output_dir }}/master_summary_{{ timestamp }}.html"
-        mode: '0644'
-      delegate_to: localhost
-
     - name: Display Final Summary
       debug:
         msg:

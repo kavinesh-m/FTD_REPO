@@ -1,0 +1,23 @@
+---
+# FMC Rule Management Role Default Variables
+
+# API settings
+api_timeout: 30
+api_retries: 3
+api_delay: 5
+validate_certs: false
+fmc_protocol: "https"
+
+# Rule management settings
+rule_expiry_check_enabled: true
+rule_auto_disable: true
+rule_auto_delete: false
+rule_backup_before_delete: true
+
+# Report generation
+generate_html_reports: true
+
+# Rule expiry detection methods
+check_metadata_expiry: true
+check_name_based_expiry: true
+expiry_date_format: "%Y-%m-%d"

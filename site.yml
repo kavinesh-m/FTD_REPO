@@ -1,0 +1,6 @@
+---
+# Main site playbook for FMC automation
+# This is the entry point for all FMC automation tasks
+
+- import_playbook: playbooks/roles/main.yml
+

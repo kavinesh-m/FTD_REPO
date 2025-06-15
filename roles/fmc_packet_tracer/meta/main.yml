@@ -1,0 +1,8 @@
+---
+galaxy_info:
+  author: FMC Automation Team
+  description: Role for running packet tracer on FMC devices
+  license: MIT
+  min_ansible_version: "2.18"
+dependencies:
+  - role: fmc_connection
