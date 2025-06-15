@@ -5,10 +5,10 @@ api_retries: 3
 api_delay: 5
 
 # Output Directories
-config_output_dir: "./outputs/configs"
-trace_output_dir: "./outputs/packet_traces"
-report_output_dir: "./outputs/reports"
-log_output_dir: "./outputs/logs"
+config_output_dir: "../../outputs/configs"
+trace_output_dir: "../../outputs/packet_traces"
+report_output_dir: "../../outputs/reports"
+log_output_dir: "../../outputs/logs"
 
 # Rule Management Settings
 rule_expiry_check_enabled: true
@@ -20,6 +20,11 @@ rule_backup_before_delete: true
 default_protocol: "TCP"
 default_source_port: 80
 default_dest_port: 443
+
+source_ip: "172.16.1.105"
+dest_ip: "8.8.8.8"
+dest_port: 53
+protocol: "UDP"
 
 # Logging Settings
 log_level: "INFO"
