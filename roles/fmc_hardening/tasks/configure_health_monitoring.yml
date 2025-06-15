@@ -117,7 +117,7 @@
       - "System Information Status:"
       - "Server Version: {{ server_version_info.json.serverVersion | default('N/A') if server_version_info.json is defined else 'N/A' }}"
       - "Domain UUID: {{ domain_info.json.uuid | default('N/A') if domain_info.json is defined else 'N/A' }}"
-      - "Available Upgrade Packages: {{ upgrade_packages.json.items | length | default(0) if upgrade_packages.json is defined and upgrade_packages.json.items is defined else 0 }}"
+      - "Available Upgrade Packages: {{ (upgrade_packages.json.items | length) if (upgrade_packages.json is defined and (upgrade_packages.json.items is defined and upgrade_packages.json.items is iterable)) else 0 }}"
   when: 
     - health_monitoring_enabled | bool
     - (server_version_available | default(false)) or (domain_info_available | default(false)) or (upgrade_packages_available | default(false))

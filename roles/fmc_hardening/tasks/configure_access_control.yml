@@ -14,6 +14,12 @@
   failed_when: false
   when: management_acl_enabled | bool
 
+## BUG: 404
+- name: Debug Current Access List
+  debug:
+    var: current_access_list
+  when: management_acl_enabled | bool
+
 - name: Get SSH Access Configuration
   uri:
     url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sshaccess"
@@ -24,6 +30,12 @@
     timeout: "{{ api_timeout }}"
   register: current_ssh_access
   failed_when: false
+  when: management_acl_enabled | bool
+
+## BUG: 404
+- name: Debug Current SSH Access Configuration
+  debug:
+    var: current_ssh_access
   when: management_acl_enabled | bool
 
 - name: Analyze Current Access Control Configuration
@@ -81,6 +93,15 @@
     - not (access_control_compliant | default(false))
   retries: "{{ api_retries }}"
   delay: "{{ api_delay }}"
+
+## BUG: 404
+- name: Debug SSH Access Update Response
+  debug:
+    var: ssh_access_update
+  when: 
+    - management_acl_enabled | bool
+    - apply_hardening | bool
+    - ssh_access_update is defined
 
 - name: Update Access Control Compliance After Configuration
   set_fact:

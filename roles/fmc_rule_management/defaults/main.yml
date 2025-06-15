@@ -15,7 +15,7 @@ rule_auto_delete: false
 rule_backup_before_delete: true
 
 # Report generation
-generate_html_reports: true
+generate_html_reports: false
 
 # Rule expiry detection methods
 check_metadata_expiry: true

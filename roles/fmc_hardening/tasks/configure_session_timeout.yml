@@ -14,6 +14,12 @@
   failed_when: false
   when: session_timeout_enabled | bool
 
+  ## BUG: 404
+- name: Debug Current Session Timeout Configuration
+  debug:
+    var: current_session_timeout
+  when: session_timeout_enabled | bool
+
 - name: Get Platform Settings for Timeout Configuration
   uri:
     url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/platformsettings"
@@ -24,6 +30,12 @@
     timeout: "{{ api_timeout }}"
   register: platform_settings
   failed_when: false
+  when: session_timeout_enabled | bool
+
+  ## BUG: 404
+- name: Debug Platform Settings for Timeout Configuration
+  debug:
+    var: platform_settings
   when: session_timeout_enabled | bool
 
 - name: Analyze Current Session Timeout Settings
@@ -71,6 +83,13 @@
     - not (session_timeout_compliant | default(false))
   retries: "{{ api_retries }}"
   delay: "{{ api_delay }}"
+
+- name: Debug Session Timeout Update Response
+  debug:
+    var: session_timeout_update
+  when: 
+    - session_timeout_enabled | bool
+    - apply_hardening | bool
 
 - name: Update Session Timeout Compliance After Configuration
   set_fact:
