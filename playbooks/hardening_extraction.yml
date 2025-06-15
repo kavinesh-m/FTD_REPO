@@ -1,0 +1,149 @@
+---
+- name: FMC Hardening Configuration Extraction
+  hosts: fmc_servers
+  gather_facts: true
+  vars:
+    timestamp: "{{ ansible_date_time.date }}_{{ ansible_date_time.time | replace(':', '-') }}"
+    
+  tasks:
+    - name: Create output directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ config_output_dir }}"
+        - "{{ log_output_dir }}"
+        - "{{ report_output_dir }}"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Get FMC Authentication Token
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/generatetoken"
+        method: POST
+        user: "{{ fmc_username }}"
+        password: "{{ fmc_password }}"
+        validate_certs: "{{ validate_certs }}"
+        force_basic_auth: yes
+        timeout: "{{ api_timeout }}"
+        status_code: [200, 204]
+      register: auth_response
+      retries: "{{ api_retries }}"
+      delay: "{{ api_delay }}"
+      until: auth_response.status == 204 or auth_response.status == 200
+
+    - name: Set authentication token
+      set_fact:
+        auth_token: "{{ auth_response.x_auth_access_token }}"
+        domain_uuid: "{{ auth_response.domain_uuid | default(domain_uuid) }}"
+
+    - name: Get System Information
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/serverversion"
+        method: GET
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: system_info
+
+    - name: Get All Access Policies
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies"
+        method: GET
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: access_policies
+
+    - name: Get Network Policies
+      uri:
+        # url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/firepowerpolicies"
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/prefilterpolicies"
+        method: GET
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: network_policies
+      failed_when: false
+
+    - name: Get Device Information
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords"
+        method: GET
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: devices
+
+    - name: Get Network Objects
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/networks"
+        method: GET
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: network_objects
+
+    - name: Get Port Objects
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/ports"
+        method: GET
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: port_objects
+
+    - name: Compile Hardening Configuration Data
+      set_fact:
+        hardening_config:
+          extraction_info:
+            timestamp: "{{ timestamp }}"
+            fmc_host: "{{ fmc_host }}"
+            extracted_by: "{{ ansible_user | default('ansible') }}"
+          system_info: "{{ system_info.json | default({}) }}"
+          access_policies: "{{ access_policies.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
+          network_policies: "{{ network_policies.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) if network_policies.status is defined and network_policies.status == 200 else {'items': [], 'paging': {'count': 0, 'limit': 0}} }}"
+          devices: "{{ devices.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
+          network_objects: "{{ network_objects.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
+          port_objects: "{{ port_objects.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
+
+    - name: Save Hardening Configuration to JSON
+      copy:
+        content: "{{ hardening_config | to_nice_json }}"
+        dest: "{{ config_output_dir }}/fmc_hardening_config_{{ timestamp }}.json"
+        mode: '0644'
+      delegate_to: localhost
+
+    # - name: Generate Hardening Configuration Report
+    #   template:
+    #     src: ../templates/hardening_report.j2
+    #     dest: "{{ report_output_dir }}/hardening_report_{{ timestamp }}.html"
+    #     mode: '0644'
+    #   delegate_to: localhost
+
+    - name: Log Extraction Summary
+      lineinfile:
+        path: "{{ log_output_dir }}/hardening_extraction.log"
+        line: "{{ timestamp }} - Successfully extracted hardening config from {{ fmc_host }} - Access Policies: {{ hardening_config.access_policies.paging.count | default(0) }}, Network Policies: {{ hardening_config.network_policies.paging.count | default(0) }}, Devices: {{ hardening_config.devices.paging.count | default(0) }}"
+        create: yes
+        mode: '0644'
+      delegate_to: localhost
+
+    - name: Display Summary
+      debug:
+        msg:
+          - "Hardening configuration extraction completed successfully"
+          - "FMC Host: {{ fmc_host }}"
+          - "Access Policies: {{ hardening_config.access_policies.paging.count | default(0) }}"
+          - "Network Policies: {{ hardening_config.network_policies.paging.count | default(0) }}"
+          - "Devices: {{ hardening_config.devices.paging.count | default(0) }}"
+          - "Network Objects: {{ hardening_config.network_objects.paging.count | default(0) }}"
+          - "Port Objects: {{ hardening_config.port_objects.paging.count | default(0) }}"
+          - "Output file: {{ config_output_dir }}/fmc_hardening_config_{{ timestamp }}.json"

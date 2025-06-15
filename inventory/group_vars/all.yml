@@ -1,0 +1,28 @@
+---
+# API Settings
+api_timeout: 30
+api_retries: 3
+api_delay: 5
+
+# Output Directories
+config_output_dir: "./outputs/configs"
+trace_output_dir: "./outputs/packet_traces"
+report_output_dir: "./outputs/reports"
+log_output_dir: "./outputs/logs"
+
+# Rule Management Settings
+rule_expiry_check_enabled: true
+rule_auto_disable: true
+rule_auto_delete: false
+rule_backup_before_delete: true
+
+# Packet Tracer Settings
+default_protocol: "TCP"
+default_source_port: 80
+default_dest_port: 443
+
+# Logging Settings
+log_level: "INFO"
+log_to_file: true
+log_rotation: true
+max_log_files: 10

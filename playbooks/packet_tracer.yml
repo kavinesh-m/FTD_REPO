@@ -1,0 +1,273 @@
+---
+- name: FMC Packet Tracer Details Extraction
+  hosts: fmc_servers
+  gather_facts: true
+  vars:
+    timestamp: "{{ ansible_date_time.date }}_{{ ansible_date_time.time | replace(':', '-') }}"
+    
+  tasks:
+    - name: Validate required parameters
+      fail:
+        msg: "Required parameter {{ item }} is not defined"
+      when: vars[item] is not defined or vars[item] == ""
+      loop:
+        - source_ip
+        - dest_ip
+
+    - name: Create output directories
+      file:
+        path: "{{ item }}"
+        state: directory
+        mode: '0755'
+      loop:
+        - "{{ trace_output_dir }}"
+        - "{{ log_output_dir }}"
+        - "{{ report_output_dir }}"
+      delegate_to: localhost
+      run_once: true
+
+    - name: Get FMC Authentication Token
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/generatetoken"
+        method: POST
+        user: "{{ fmc_username }}"
+        password: "{{ fmc_password }}"
+        validate_certs: "{{ validate_certs }}"
+        force_basic_auth: yes
+        timeout: "{{ api_timeout }}"
+        status_code: [200, 204]
+      register: auth_response
+      retries: "{{ api_retries }}"
+      delay: "{{ api_delay }}"
+      until: auth_response.status == 204 or auth_response.status == 200
+
+    - name: Set authentication token
+      set_fact:
+        auth_token: "{{ auth_response.x_auth_access_token }}"
+        domain_uuid: "{{ auth_response.domain_uuid | default(domain_uuid) }}"
+
+    - name: Get Available Devices for Packet Tracer
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords"
+        method: GET
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: devices
+
+    - name: Debug available devices
+      debug:
+        msg: "Available devices for packet tracing: {{ devices.json['items'] | length }}"
+
+    - name: Get all host objects from FMC
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/hosts?limit=1000"
+        method: GET
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: fmc_hosts
+
+    # - name: Show raw FMC hosts JSON
+    #   debug:
+    #     var: fmc_hosts.json
+
+    - name: Show all host IPs known to FMC
+      debug:
+        msg: "{{ fmc_hosts.json['items'] | map(attribute='name') | list }}"
+
+    - name: Set default device if not specified
+      set_fact:
+        device_id: "{{ devices.json['items'][0].id }}"
+        device_name: "{{ devices.json['items'][0].name }}"
+      when: 
+        - device_id is not defined
+        - devices.json['items'] | length > 0
+
+    - name: Validate device availability
+      fail:
+        msg: "No devices available for packet tracing or specified device_id not found"
+      when: device_id is not defined
+
+    - name: Prepare packet tracer parameters
+      set_fact:
+        tracer_params:
+          sourceIP: "{{ source_ip }}"
+          destinationIP: "{{ dest_ip }}"
+          sourcePort: "{{ source_port | default(default_source_port) }}"
+          destinationPort: "{{ dest_port | default(default_dest_port) }}"
+          protocol: "{{ protocol | default(default_protocol) }}"
+          deviceId: "{{ device_id }}"
+
+    - name: Debug packet tracer URL variables
+      debug:
+        msg:
+          - "fmc_protocol: {{ fmc_protocol }}"
+          - "fmc_host: {{ fmc_host }}"
+          - "domain_uuid: {{ domain_uuid }}"
+          - "packettracer URL: {{ fmc_protocol }}://{{ fmc_host }}/api/fmc_troubleshoot/v1/domain/{{ domain_uuid }}/packettracer"
+
+    - name: Try Packet Tracer with Primary API Endpoint
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_troubleshoot/v1/domain/{{ domain_uuid }}/packettracer"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: "{{ tracer_params }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: tracer_result_primary
+      retries: "{{ api_retries }}"
+      delay: "{{ api_delay }}"
+      failed_when: false
+
+    - name: Try Alternative Packet Tracer API Endpoint (if primary fails)
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/packettracer"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: "{{ tracer_params }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: tracer_result_alt
+      when: tracer_result_primary.status != 200
+      retries: "{{ api_retries }}"
+      delay: "{{ api_delay }}"
+      failed_when: false
+
+    - name: Try Third Alternative Packet Tracer API Endpoint
+      uri:
+        url: "{{ fmc_protocol }}://{{ fmc_host }}/api/firepower/device-management/v1/packet-tracer"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body: "{{ tracer_params }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout }}"
+      register: tracer_result_third
+      when: 
+        - tracer_result_primary.status != 200
+        - tracer_result_alt.status is not defined or tracer_result_alt.status != 200
+      retries: "{{ api_retries }}"
+      delay: "{{ api_delay }}"
+      failed_when: false
+
+    - name: Set successful tracer result
+      set_fact:
+        tracer_result: "{{ tracer_result_primary }}"
+      when: tracer_result_primary.status == 200
+
+    - name: Set successful tracer result (alternative endpoint)
+      set_fact:
+        tracer_result: "{{ tracer_result_alt }}"
+      when: 
+        - tracer_result_primary.status != 200
+        - tracer_result_alt.status is defined and tracer_result_alt.status == 200
+
+    - name: Set successful tracer result (third endpoint)
+      set_fact:
+        tracer_result: "{{ tracer_result_third }}"
+      when: 
+        - tracer_result_primary.status != 200
+        - (tracer_result_alt.status is not defined or tracer_result_alt.status != 200)
+        - tracer_result_third.status is defined and tracer_result_third.status == 200
+
+    - name: Handle packet tracer failure
+      set_fact:
+        tracer_result:
+          status: 404
+          json:
+            error: "Packet tracer functionality not available in this FMC environment"
+            attempted_endpoints:
+              - "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_troubleshoot/v1/domain/{{ domain_uuid }}/packettracer"
+              - "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/packettracer"
+              - "{{ fmc_protocol }}://{{ fmc_host }}/api/firepower/device-management/v1/packet-tracer"
+            primary_error: "{{ tracer_result_primary.json | default('Unknown error') }}"
+            alternative_error: "{{ tracer_result_alt.json | default('Not attempted') if tracer_result_alt is defined else 'Not attempted' }}"
+            third_error: "{{ tracer_result_third.json | default('Not attempted') if tracer_result_third is defined else 'Not attempted' }}"
+      when: 
+        - tracer_result_primary.status != 200
+        - (tracer_result_alt.status is not defined or tracer_result_alt.status != 200)
+        - (tracer_result_third.status is not defined or tracer_result_third.status != 200)
+
+    - name: Process Packet Tracer Results
+      set_fact:
+        trace_summary:
+          timestamp: "{{ timestamp }}"
+          fmc_host: "{{ fmc_host }}"
+          device_name: "{{ device_name | default('Unknown') }}"
+          device_id: "{{ device_id }}"
+          trace_parameters: "{{ tracer_params }}"
+          trace_results: "{{ tracer_result.json }}"
+          trace_status: "{{ 'SUCCESS' if tracer_result.status == 200 else 'FAILED' }}"
+
+    - name: Save Packet Tracer Results to JSON
+      copy:
+        content: "{{ trace_summary | to_nice_json }}"
+        dest: "{{ trace_output_dir }}/packet_trace_{{ timestamp }}.json"
+        mode: '0644'
+      delegate_to: localhost
+
+    # - name: Generate Packet Tracer Report
+    #   template:
+    #     src: packet_tracer_report.j2
+    #     dest: "{{ report_output_dir }}/packet_tracer_{{ timestamp }}.html"
+    #     mode: '0644'
+    #   delegate_to: localhost
+
+    - name: Save Detailed Trace Log
+      copy:
+        content: |
+          Packet Tracer Execution Log
+          ===========================
+          Timestamp: {{ timestamp }}
+          FMC Host: {{ fmc_host }}
+          Device: {{ device_name | default('Unknown') }} ({{ device_id }})
+          
+          Trace Parameters:
+          - Source IP: {{ source_ip }}
+          - Destination IP: {{ dest_ip }}
+          - Source Port: {{ source_port | default(default_source_port) }}
+          - Destination Port: {{ dest_port | default(default_dest_port) }}
+          - Protocol: {{ protocol | default(default_protocol) }}
+          
+          Results:
+          {{ tracer_result.json | to_nice_yaml }}
+        dest: "{{ trace_output_dir }}/packet_trace_detailed_{{ timestamp }}.log"
+        mode: '0644'
+      delegate_to: localhost
+
+    - name: Log Packet Tracer Activity
+      lineinfile:
+        path: "{{ log_output_dir }}/packet_tracer.log"
+        line: "{{ timestamp }} - Packet Trace on {{ fmc_host }} - {{ source_ip }}:{{ source_port | default(default_source_port) }} -> {{ dest_ip }}:{{ dest_port | default(default_dest_port) }} - Status: {{ 'SUCCESS' if tracer_result.status == 200 else 'FAILED' }}"
+        create: yes
+        mode: '0644'
+      delegate_to: localhost
+
+    - name: Display Packet Tracer Summary
+      debug:
+        msg:
+          - "Packet tracer execution completed"
+          - "FMC Host: {{ fmc_host }}"
+          - "Device: {{ device_name | default('Unknown') }} ({{ device_id }})"
+          - "Source: {{ source_ip }}:{{ source_port | default(default_source_port) }}"
+          - "Destination: {{ dest_ip }}:{{ dest_port | default(default_dest_port) }}"
+          - "Protocol: {{ protocol | default(default_protocol) }}"
+          - "Status: {{ 'SUCCESS' if tracer_result.status == 200 else 'FAILED' }}"
+          - "Results saved to: {{ trace_output_dir }}/packet_trace_{{ timestamp }}.json"
+          - "{% if tracer_result.status != 200 %}NOTE: Packet tracer may not be available in DevNet sandbox environments{% endif %}"
+
+    - name: Display Trace Results (if successful)
+      debug:
+        var: tracer_result.json
+      when: tracer_result.status == 200
