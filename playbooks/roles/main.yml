@@ -19,30 +19,30 @@
       tags: ['hardening', 'config']
       when: extract_hardening_config | default(true) | bool
 
-    # Rule management (time-based)
-    - role: fmc_rule_management
-      tags: ['rules', 'management']
-      when: 
-        - manage_rules | default(true) | bool
-        - rule_expiry_check_enabled | default(true) | bool
+  #   # Rule management (time-based)
+  #   - role: fmc_rule_management
+  #     tags: ['rules', 'management']
+  #     when: 
+  #       - manage_rules | default(true) | bool
+  #       - rule_expiry_check_enabled | default(true) | bool
 
-    # Packet tracer
-    - role: fmc_packet_tracer
-      tags: ['packet', 'tracer']
-      when: 
-        - run_packet_tracer | default(false) | bool
-        - source_ip is defined
-        - dest_ip is defined
+  #   # Packet tracer
+  #   - role: fmc_packet_tracer
+  #     tags: ['packet', 'tracer']
+  #     when: 
+  #       - run_packet_tracer | default(false) | bool
+  #       - source_ip is defined
+  #       - dest_ip is defined
 
-  post_tasks:
-    - name: Display Final Summary
-      debug:
-        msg:
-          - "=========================================="
-          - "    AUTOMATION SUITE COMPLETED"
-          - "=========================================="
-          - "All tasks completed successfully!"
-          - "Reports generated in: {{ report_output_dir }}"
-          - "Logs available in: {{ log_output_dir }}"
-          - "=========================================="
-      tags: ['always']
+  # post_tasks:
+  #   - name: Display Final Summary
+  #     debug:
+  #       msg:
+  #         - "=========================================="
+  #         - "    AUTOMATION SUITE COMPLETED"
+  #         - "=========================================="
+  #         - "All tasks completed successfully!"
+  #         - "Reports generated in: {{ report_output_dir }}"
+  #         - "Logs available in: {{ log_output_dir }}"
+  #         - "=========================================="
+  #     tags: ['always']

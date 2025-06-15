@@ -55,10 +55,23 @@
   debug:
     msg:
       - "FMC API Access Test Results:"
-      - "Status: {{ 'SUCCESS' if api_test.status == 200 else 'FAILED' }}"
-      - "FMC Version: {{ api_test.json.serverVersion | default('Unknown') }}"
-      - "Build: {{ api_test.json.build | default('Unknown') }}"
-  when: auth_test.status == 204
+      - "Status: {{ 'SUCCESS' if (api_test.status | default(0)) == 200 else 'FAILED' }}"
+      - "FMC Version: {{ api_test.json['items'][0].serverVersion | default('Unknown') }}"
+      - "Model: {{ api_test.json['items'][0].model | default('Unknown') }}"
+      - "Hostname: {{ api_test.json['items'][0].hostname | default('Unknown') }}"
+      - "Uptime: {{ api_test.json['items'][0].uptime | default('Unknown') }}"
+  when: 
+    - auth_test.status == 204
+    - api_test.status == 200
+
+- name: Display API Test Failure
+  debug:
+    msg:
+      - "FMC API Access Test Results:"
+      - "Status: FAILED"
+      - "HTTP Status: {{ api_test.status | default('N/A') }}"
+      - "Error: {{ api_test.msg | default('API test failed') }}"
+  when: auth_test.status == 204 and (api_test.status is undefined or api_test.status != 200)
 
 - name: Test Domain Access
   uri:

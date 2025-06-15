@@ -1,0 +1,154 @@
+---
+# Management Access Control List Configuration
+# 3.3 Management Access Control List - H-Cloud Approved IP Ranges
+
+- name: Get Current Management Access List
+  uri:
+    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/accesslist"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ auth_token }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout }}"
+  register: current_access_list
+  failed_when: false
+  when: management_acl_enabled | bool
+
+- name: Get SSH Access Configuration
+  uri:
+    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sshaccess"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ auth_token }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout }}"
+  register: current_ssh_access
+  failed_when: false
+  when: management_acl_enabled | bool
+
+- name: Analyze Current Access Control Configuration
+  set_fact:
+    access_list_configured: "{{ current_access_list.json is defined and current_access_list.json.items is defined }}"
+    ssh_access_configured: "{{ current_ssh_access.json is defined }}"
+  when: management_acl_enabled | bool
+
+- name: Check Access Control Compliance
+  set_fact:
+    access_control_compliant: false  # Default to false, will be updated based on analysis
+  when: management_acl_enabled | bool
+
+- name: Validate SSH Access Restrictions
+  block:
+    - name: Extract Current SSH Allowed IPs
+      set_fact:
+        current_ssh_ips: "{{ current_ssh_access.json.allowedIPs | default([]) }}"
+      when: 
+        - current_ssh_access.json is defined
+        - current_ssh_access.json.allowedIPs is defined
+
+    - name: Check if All Required IPs are Present
+      set_fact:
+        missing_ips: "{{ allowed_management_ips | difference(current_ssh_ips | default([])) }}"
+        extra_ips: "{{ (current_ssh_ips | default([])) | difference(allowed_management_ips) }}"
+
+    - name: Determine SSH Access Compliance
+      set_fact:
+        ssh_access_compliant: "{{ (missing_ips | length == 0) and (extra_ips | length == 0) }}"
+        access_control_compliant: "{{ (missing_ips | length == 0) and (extra_ips | length == 0) }}"
+
+  when: 
+    - management_acl_enabled | bool
+    - ssh_access_configured | default(false)
+
+- name: Configure SSH Access Control (if apply_hardening is enabled)
+  uri:
+    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sshaccess"
+    method: PUT
+    headers:
+      X-auth-access-token: "{{ auth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      allowedIPs: "{{ allowed_management_ips }}"
+      type: "SSHAccess"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout }}"
+    status_code: [200, 201]
+  register: ssh_access_update
+  when: 
+    - management_acl_enabled | bool
+    - apply_hardening | bool
+    - not (access_control_compliant | default(false))
+  retries: "{{ api_retries }}"
+  delay: "{{ api_delay }}"
+
+- name: Update Access Control Compliance After Configuration
+  set_fact:
+    access_control_compliant: true
+  when: 
+    - management_acl_enabled | bool
+    - apply_hardening | bool
+    - ssh_access_update is defined
+    - ssh_access_update.status in [200, 201]
+
+- name: Record Access Control Compliance Status
+  set_fact:
+    compliance_results: "{{ compliance_results | default({}) | combine({
+      'access_control_compliance': {
+        'status': access_control_compliant | default(false),
+        'ssh_configured': ssh_access_configured | default(false),
+        'compliant': access_control_compliant | default(false),
+        'missing_ips': missing_ips | default([]),
+        'extra_ips': extra_ips | default([]),
+        'applied': (ssh_access_update.status is defined and ssh_access_update.status in [200, 201]) | default(false),
+        'recommendation': 'Configure SSH access to allow only H-Cloud approved IP ranges'
+      } }) }}"
+  when: management_acl_enabled | bool
+
+- name: Display Access Control Compliance Status
+  debug:
+    msg:
+      - "Management Access Control Compliance Check:"
+      - "SSH Access Configured: {{ ssh_access_configured | default(false) }}"
+      - "Access Control Compliant: {{ access_control_compliant | default(false) }}"
+      - "{% if missing_ips is defined and missing_ips | length > 0 %}Missing Required IPs: {{ missing_ips | join(', ') }}{% endif %}"
+      - "{% if extra_ips is defined and extra_ips | length > 0 %}Unauthorized IPs Found: {{ extra_ips | join(', ') }}{% endif %}"
+      - "{% if apply_hardening and ssh_access_update is defined %}SSH Access Applied: {{ ssh_access_update.status in [200, 201] }}{% endif %}"
+  when: management_acl_enabled | bool
+
+- name: Manual Configuration Instructions for Access Control
+  debug:
+    msg: |
+      MANUAL SSH ACCESS CONTROL CONFIGURATION REQUIRED:
+      1. Navigate to System > Configuration > SSH Access
+      2. Configure the following allowed IP ranges:
+      {% for ip in allowed_management_ips %}
+      - {{ ip }}
+      {% endfor %}
+      3. Remove any unauthorized IP addresses
+      4. Click Save to apply changes
+      
+      SECURITY CRITICAL: Only H-Cloud approved IP ranges should be allowed SSH access.
+  when: 
+    - management_acl_enabled | bool
+    - not (access_control_compliant | default(false))
+    - not apply_hardening | bool
+
+- name: Fail on Non-Compliant Access Control (if validation enabled)
+  fail:
+    msg: |
+      ACCESS CONTROL COMPLIANCE FAILURE:
+      SSH access control does not meet H-Cloud security requirements.
+      {% if missing_ips is defined and missing_ips | length > 0 %}
+      Missing required IP ranges: {{ missing_ips | join(', ') }}
+      {% endif %}
+      {% if extra_ips is defined and extra_ips | length > 0 %}
+      Unauthorized IP ranges found: {{ extra_ips | join(', ') }}
+      {% endif %}
+      
+      This is a CRITICAL security requirement for H-Cloud deployment.
+  when: 
+    - management_acl_enabled | bool
+    - not (access_control_compliant | default(false))
+    - validate_compliance | bool
+  ignore_errors: "{{ not validate_compliance }}"

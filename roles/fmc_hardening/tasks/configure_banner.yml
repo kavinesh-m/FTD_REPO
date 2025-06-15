@@ -1,0 +1,99 @@
+---
+# Warning Banner Configuration
+# 3.1.2 Warning Banner per Security Requirements
+
+- name: Get Current Login Banner Configuration
+  uri:
+    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/loginbanner"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ auth_token }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout }}"
+  register: current_banner
+  failed_when: false
+  when: warning_banner_enabled | bool
+
+- name: Check if Banner is Configured
+  set_fact:
+    banner_configured: "{{ current_banner.json.loginBanner is defined and current_banner.json.loginBanner != '' }}"
+    banner_compliant: "{{ current_banner.json.loginBanner is defined and (warning_banner_message.strip() in current_banner.json.loginBanner) }}"
+  when: 
+    - warning_banner_enabled | bool
+    - current_banner.status is defined
+    - current_banner.status == 200
+
+- name: Set Banner Status for Failed API Call
+  set_fact:
+    banner_configured: false
+    banner_compliant: false
+  when: 
+    - warning_banner_enabled | bool
+    - (current_banner.status is not defined or current_banner.status != 200)
+
+- name: Configure Warning Banner (if apply_hardening is enabled)
+  uri:
+    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/loginbanner"
+    method: PUT
+    headers:
+      X-auth-access-token: "{{ auth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      loginBanner: "{{ warning_banner_message }}"
+      type: "LoginBanner"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout }}"
+    status_code: [200, 201]
+  register: banner_update
+  when: 
+    - warning_banner_enabled | bool
+    - apply_hardening | bool
+    - not (banner_compliant | default(false))
+  retries: "{{ api_retries }}"
+  delay: "{{ api_delay }}"
+
+- name: Update Banner Compliance Status After Configuration
+  set_fact:
+    banner_compliant: true
+  when: 
+    - warning_banner_enabled | bool
+    - apply_hardening | bool
+    - banner_update is defined
+    - banner_update.status in [200, 201]
+
+- name: Record Banner Compliance Status
+  set_fact:
+    compliance_results: "{{ compliance_results | default({}) | combine({
+      'warning_banner_compliance': {
+        'status': banner_compliant | default(false),
+        'configured': banner_configured | default(false),
+        'compliant': banner_compliant | default(false),
+        'applied': (banner_update.status is defined and banner_update.status in [200, 201]) | default(false),
+        'recommendation': 'Configure standard warning banner message for authorized use disclaimer'
+      } }) }}"
+  when: warning_banner_enabled | bool
+
+- name: Display Banner Compliance Status
+  debug:
+    msg:
+      - "Warning Banner Compliance Check:"
+      - "Banner Configured: {{ banner_configured | default(false) }}"
+      - "Banner Compliant: {{ banner_compliant | default(false) }}"
+      - "{% if apply_hardening and banner_update is defined %}Banner Applied: {{ banner_update.status in [200, 201] }}{% endif %}"
+      - "{% if not (banner_compliant | default(false)) and not apply_hardening %}RECOMMENDATION: Configure warning banner with required legal disclaimer{% endif %}"
+  when: warning_banner_enabled | bool
+
+- name: Manual Configuration Instructions for Banner
+  debug:
+    msg: |
+      MANUAL BANNER CONFIGURATION REQUIRED:
+      1. Navigate to System > Configuration > Login Banner
+      2. Enable Login Banner
+      3. Enter the following message:
+      {{ warning_banner_message }}
+      4. Click Save to apply changes
+  when: 
+    - warning_banner_enabled | bool
+    - not (banner_compliant | default(false))
+    - not apply_hardening | bool

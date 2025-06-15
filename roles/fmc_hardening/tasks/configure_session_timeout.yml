@@ -1,0 +1,125 @@
+---
+# Session Timeout Configuration
+# Session timeout settings per security requirements
+
+- name: Get Current Session Timeout Configuration
+  uri:
+    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sessiontimeout"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ auth_token }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout }}"
+  register: current_session_timeout
+  failed_when: false
+  when: session_timeout_enabled | bool
+
+- name: Get Platform Settings for Timeout Configuration
+  uri:
+    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/platformsettings"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ auth_token }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout }}"
+  register: platform_settings
+  failed_when: false
+  when: session_timeout_enabled | bool
+
+- name: Analyze Current Session Timeout Settings
+  set_fact:
+    session_timeout_configured: "{{ current_session_timeout.json is defined }}"
+    current_browser_timeout: "{{ current_session_timeout.json.browserTimeout | default(0) }}"
+    current_shell_timeout: "{{ current_session_timeout.json.shellTimeout | default(0) }}"
+  when: 
+    - session_timeout_enabled | bool
+    - current_session_timeout.status is defined
+    - current_session_timeout.status == 200
+
+- name: Check Session Timeout Compliance
+  set_fact:
+    browser_timeout_compliant: "{{ (current_browser_timeout | int) == (browser_session_timeout | int) }}"
+    shell_timeout_compliant: "{{ (current_shell_timeout | int) == (shell_timeout | int) }}"
+  when: 
+    - session_timeout_enabled | bool
+    - session_timeout_configured | default(false)
+
+- name: Determine Overall Session Timeout Compliance
+  set_fact:
+    session_timeout_compliant: "{{ (browser_timeout_compliant | default(false)) and (shell_timeout_compliant | default(false)) }}"
+  when: session_timeout_enabled | bool
+
+- name: Configure Session Timeouts (if apply_hardening is enabled)
+  uri:
+    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sessiontimeout"
+    method: PUT
+    headers:
+      X-auth-access-token: "{{ auth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      browserTimeout: "{{ browser_session_timeout }}"
+      shellTimeout: "{{ shell_timeout }}"
+      type: "SessionTimeout"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout }}"
+    status_code: [200, 201]
+  register: session_timeout_update
+  when: 
+    - session_timeout_enabled | bool
+    - apply_hardening | bool
+    - not (session_timeout_compliant | default(false))
+  retries: "{{ api_retries }}"
+  delay: "{{ api_delay }}"
+
+- name: Update Session Timeout Compliance After Configuration
+  set_fact:
+    session_timeout_compliant: true
+  when: 
+    - session_timeout_enabled | bool
+    - apply_hardening | bool
+    - session_timeout_update is defined
+    - session_timeout_update.status in [200, 201]
+
+- name: Record Session Timeout Compliance Status
+  set_fact:
+    compliance_results: "{{ compliance_results | default({}) | combine({
+      'session_timeout_compliance': {
+        'status': session_timeout_compliant | default(false),
+        'browser_timeout_current': current_browser_timeout | default('unknown'),
+        'browser_timeout_required': browser_session_timeout,
+        'shell_timeout_current': current_shell_timeout | default('unknown'),
+        'shell_timeout_required': shell_timeout,
+        'browser_compliant': browser_timeout_compliant | default(false),
+        'shell_compliant': shell_timeout_compliant | default(false),
+        'compliant': session_timeout_compliant | default(false),
+        'applied': (session_timeout_update.status is defined and session_timeout_update.status in [200, 201]) | default(false),
+        'recommendation': 'Configure browser and shell session timeouts to 15 minutes'
+      } }) }}"
+  when: session_timeout_enabled | bool
+
+- name: Display Session Timeout Compliance Status
+  debug:
+    msg:
+      - "Session Timeout Compliance Check:"
+      - "Browser Timeout - Current: {{ current_browser_timeout | default('unknown') }} min, Required: {{ browser_session_timeout }} min, Compliant: {{ browser_timeout_compliant | default(false) }}"
+      - "Shell Timeout - Current: {{ current_shell_timeout | default('unknown') }} min, Required: {{ shell_timeout }} min, Compliant: {{ shell_timeout_compliant | default(false) }}"
+      - "Overall Compliant: {{ session_timeout_compliant | default(false) }}"
+      - "{% if apply_hardening and session_timeout_update is defined %}Session Timeouts Applied: {{ session_timeout_update.status in [200, 201] }}{% endif %}"
+  when: session_timeout_enabled | bool
+
+- name: Manual Configuration Instructions for Session Timeout
+  debug:
+    msg: |
+      MANUAL SESSION TIMEOUT CONFIGURATION REQUIRED:
+      1. Navigate to Devices > Platform Settings
+      2. Select or create a Platform Settings policy
+      3. Go to Timeout section
+      4. Set Browser Session Timeout: {{ browser_session_timeout }} minutes
+      5. Set Shell Timeout: {{ shell_timeout }} minutes
+      6. Click Save to apply changes
+      7. Deploy the policy to target devices
+  when: 
+    - session_timeout_enabled | bool
+    - not (session_timeout_compliant | default(false))
+    - not apply_hardening | bool

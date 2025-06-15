@@ -1,5 +1,21 @@
 ---
-# FMC Hardening Configuration Extraction Tasks
+# FMC Security Hardening Tasks
+# Implements H-Cloud Security Hardening Benchmark requirements
+
+- name: Set timestamp variable
+  set_fact:
+    timestamp: "{{ ansible_date_time.date }}_{{ ansible_date_time.time | replace(':', '-') }}"
+  when: timestamp is not defined
+
+- name: Initialize Hardening Process
+  debug:
+    msg:
+      - "=== FMC SECURITY HARDENING PROCESS ==="
+      - "FMC Host: {{ fmc_host }}"
+      - "Hardening Enabled: {{ hardening_enabled }}"
+      - "Apply Hardening: {{ apply_hardening }}"
+      - "Validate Compliance: {{ validate_compliance }}"
+      - "Timestamp: {{ timestamp }}"
 
 - name: Get FMC Authentication Token
   uri:
@@ -27,7 +43,42 @@
     auth_token: "{{ auth_response.x_auth_access_token | default(fmc_auth_token | default('')) }}"
     domain_uuid: "{{ auth_response.domain_uuid | default(domain_uuid) }}"
 
-- name: Get System Information
+- name: Validate Authentication
+  fail:
+    msg: "Failed to obtain valid authentication token from FMC"
+  when: auth_token is not defined or auth_token == ""
+
+# ===== SECURITY HARDENING IMPLEMENTATION =====
+# Execute hardening tasks based on H-Cloud Security Benchmark
+
+- name: "STEP 1: Hostname Configuration Validation (3.1.1)"
+  include_tasks: validate_hostname.yml
+  when: hardening_enabled | bool
+
+- name: "STEP 2: Warning Banner Configuration (3.1.2)"
+  include_tasks: configure_banner.yml
+  when: hardening_enabled | bool
+
+- name: "STEP 3: Management Access Control List (3.3)"
+  include_tasks: configure_access_control.yml
+  when: hardening_enabled | bool
+
+- name: "STEP 4: Session Timeout Configuration"
+  include_tasks: configure_session_timeout.yml
+  when: hardening_enabled | bool
+
+- name: "STEP 5: Password Policy Configuration"
+  include_tasks: configure_password_policy.yml
+  when: hardening_enabled | bool
+
+- name: "STEP 6: Health Monitoring Configuration"
+  include_tasks: configure_health_monitoring.yml
+  when: hardening_enabled | bool
+
+# ===== CONFIGURATION EXTRACTION FOR BASELINE =====
+# Extract current configuration for documentation and compliance tracking
+
+- name: Get System Information for Baseline
   uri:
     url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/serverversion"
     method: GET
@@ -36,8 +87,9 @@
     validate_certs: "{{ validate_certs }}"
     timeout: "{{ api_timeout }}"
   register: system_info
+  when: extract_system_info | bool
 
-- name: Get All Access Policies
+- name: Get All Access Policies for Baseline
   uri:
     url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies"
     method: GET
@@ -46,8 +98,9 @@
     validate_certs: "{{ validate_certs }}"
     timeout: "{{ api_timeout }}"
   register: access_policies
+  when: extract_access_policies | bool
 
-- name: Get Network Policies
+- name: Get Network Policies for Baseline
   uri:
     url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/prefilterpolicies"
     method: GET
@@ -57,8 +110,9 @@
     timeout: "{{ api_timeout }}"
   register: network_policies
   failed_when: false
+  when: extract_network_policies | bool
 
-- name: Get Device Information
+- name: Get Device Information for Baseline
   uri:
     url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords"
     method: GET
@@ -67,8 +121,9 @@
     validate_certs: "{{ validate_certs }}"
     timeout: "{{ api_timeout }}"
   register: devices
+  when: extract_devices | bool
 
-- name: Get Network Objects
+- name: Get Network Objects for Baseline
   uri:
     url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/networks"
     method: GET
@@ -77,8 +132,9 @@
     validate_certs: "{{ validate_certs }}"
     timeout: "{{ api_timeout }}"
   register: network_objects
+  when: extract_network_objects | bool
 
-- name: Get Port Objects
+- name: Get Port Objects for Baseline
   uri:
     url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/ports"
     method: GET
@@ -87,6 +143,7 @@
     validate_certs: "{{ validate_certs }}"
     timeout: "{{ api_timeout }}"
   register: port_objects
+  when: extract_port_objects | bool
 
 - name: Compile Hardening Configuration Data
   set_fact:
@@ -95,6 +152,8 @@
         timestamp: "{{ timestamp }}"
         fmc_host: "{{ fmc_host }}"
         extracted_by: "{{ ansible_user | default('ansible') }}"
+        hardening_applied: "{{ apply_hardening | bool }}"
+        compliance_validated: "{{ validate_compliance | bool }}"
       system_info: "{{ system_info.json | default({}) }}"
       access_policies: "{{ access_policies.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
       network_policies: "{{ network_policies.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) if network_policies.status is defined and network_policies.status == 200 else {'items': [], 'paging': {'count': 0, 'limit': 0}} }}"
@@ -102,29 +161,42 @@
       network_objects: "{{ network_objects.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
       port_objects: "{{ port_objects.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
 
-- name: Save Hardening Configuration to JSON
+# ===== COMPLIANCE REPORTING =====
+# Generate comprehensive compliance report
+
+- name: "STEP 7: Generate Compliance Report"
+  include_tasks: generate_compliance_report.yml
+  when: 
+    - hardening_enabled | bool
+    - compliance_report_enabled | bool
+
+- name: Save Hardening Configuration Baseline to JSON
   copy:
     content: "{{ hardening_config | to_nice_json }}"
-    dest: "{{ config_output_dir }}/fmc_hardening_config_{{ timestamp }}.json"
+    dest: "{{ config_output_dir }}/fmc_hardening_baseline_{{ timestamp }}.json"
     mode: '0644'
   delegate_to: localhost
 
-- name: Log Extraction Summary
+- name: Log Hardening Process Summary
   lineinfile:
-    path: "{{ log_output_dir }}/hardening_extraction.log"
-    line: "{{ timestamp }} - Successfully extracted hardening config from {{ fmc_host }} - Access Policies: {{ hardening_config.access_policies.paging.count | default(0) }}, Network Policies: {{ hardening_config.network_policies.paging.count | default(0) }}, Devices: {{ hardening_config.devices.paging.count | default(0) }}"
+    path: "{{ log_output_dir }}/hardening_process.log"
+    line: "{{ timestamp }} - FMC {{ fmc_host }} - Hardening: {{ 'APPLIED' if apply_hardening else 'VALIDATED' }} - Compliance: {{ compliance_summary.compliance_percentage | default(0) }}% - Status: {{ compliance_summary.overall_status | default('UNKNOWN') }}"
     create: yes
     mode: '0644'
   delegate_to: localhost
 
-- name: Display Summary
+- name: Display Final Hardening Summary
   debug:
     msg:
-      - "Hardening configuration extraction completed successfully"
+      - "=== FMC SECURITY HARDENING COMPLETED ==="
       - "FMC Host: {{ fmc_host }}"
-      - "Access Policies: {{ hardening_config.access_policies.paging.count | default(0) }}"
-      - "Network Policies: {{ hardening_config.network_policies.paging.count | default(0) }}"
-      - "Devices: {{ hardening_config.devices.paging.count | default(0) }}"
-      - "Network Objects: {{ hardening_config.network_objects.paging.count | default(0) }}"
-      - "Port Objects: {{ hardening_config.port_objects.paging.count | default(0) }}"
-      - "Output file: {{ config_output_dir }}/fmc_hardening_config_{{ timestamp }}.json"
+      - "Hardening Applied: {{ apply_hardening | bool }}"
+      - "Compliance Validated: {{ validate_compliance | bool }}"
+      - "{% if compliance_summary is defined %}Overall Compliance: {{ compliance_summary.compliance_percentage }}% ({{ compliance_summary.overall_status }}){% endif %}"
+      - "{% if compliance_summary is defined %}Checks Passed: {{ compliance_summary.passed_checks }}/{{ compliance_summary.total_checks }}{% endif %}"
+      - "{% if compliance_summary is defined and compliance_summary.critical_failures | length > 0 %}Critical Failures: {{ compliance_summary.critical_failures | length }}{% endif %}"
+      - ""
+      - "Generated Files:"
+      - "- Baseline Config: {{ config_output_dir }}/fmc_hardening_baseline_{{ timestamp }}.json"
+      - "{% if compliance_report_enabled %}- Compliance Report: {{ config_output_dir }}/fmc_compliance_report_{{ timestamp }}.json{% endif %}"
+      - "{% if generate_html_reports and compliance_report_enabled %}- HTML Report: {{ config_output_dir }}/fmc_compliance_report_{{ timestamp }}.html{% endif %}"

@@ -1,7 +1,7 @@
 ---
 galaxy_info:
   author: FMC Automation Team
-  description: Role for extracting FMC hardening configuration
+  description: Role for implementing FMC security hardening based on H-Cloud Security Benchmark
   license: MIT
   min_ansible_version: "2.18"
 dependencies:
