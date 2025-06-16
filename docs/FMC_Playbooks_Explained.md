@@ -1,5 +1,8 @@
 # FMC Ansible Playbooks Explained
 
+> [!WARNING]  
+> Outate Documentation
+
 ## What is FMC (Firewall Management Center)?
 
 **FMC (Firewall Management Center)** is Cisco's centralized management platform for their Firepower security devices. Think of it as the "control tower" for your network security infrastructure. It allows network administrators to:
@@ -14,7 +17,7 @@
 
 This Ansible project provides automated tools to manage and monitor your FMC system. Instead of manually clicking through the FMC web interface, these playbooks use API calls to perform tasks automatically, saving time and reducing human error.
 
-### 🏗️ **Architecture Overview**
+###  **Architecture Overview**
 The automation suite follows a modular design with:
 - **Master Orchestrator** (`main.yml`) - Coordinates all automation tasks
 - **Individual Playbooks** - Specialized tools for specific functions
@@ -25,7 +28,7 @@ The automation suite follows a modular design with:
 
 ---
 
-## 📋 Playbook Breakdown
+##  Playbook Breakdown
 
 ### 1. **main.yml** - The Master Orchestrator
 **What it does:** This is the "conductor" that runs all other playbooks in a coordinated sequence using a modular task-based approach.
@@ -227,7 +230,7 @@ The automation suite follows a modular design with:
 
 ---
 
-## 🔄 How They Work Together
+##  How They Work Together
 
 ### Typical Automation Flow:
 1. **Test Connection** → Ensure everything is working
@@ -236,19 +239,9 @@ The automation suite follows a modular design with:
 4. **Packet Tracer** → Verify critical paths still work
 5. **Generate Reports** → Document everything that happened
 
-### Real-World Example:
-```
-Daily 2 AM Automation:
-├── Check FMC is accessible ✓
-├── Backup all current configurations ✓
-├── Find and disable 3 expired temporary rules ✓
-├── Test that critical business applications still work ✓
-└── Email summary report to security team ✓
-```
-
 ---
 
-## 🎯 Benefits for Non-Technical Users
+##  Benefits for Non-Technical Users
 
 ### **Consistency**
 - Same checks performed every time
@@ -272,7 +265,7 @@ Daily 2 AM Automation:
 
 ---
 
-## 🚨 Safety Features
+##  Safety Features
 
 ### **Backup First**
 - Always saves current state before making changes
@@ -295,7 +288,7 @@ Daily 2 AM Automation:
 
 ---
 
-## 📊 Understanding the Reports
+##  Understanding the Reports
 
 ### **Connection Test Report**
 - Green checkmarks = Everything working
@@ -324,27 +317,3 @@ Daily 2 AM Automation:
 - Perfect for management reporting
 
 ---
-
-## 🎯 When to Use Each Playbook
-
-| Scenario | Recommended Playbook | Frequency |
-|----------|---------------------|-----------|
-| Daily health check | `test_connection.yml` | Daily |
-| Before system changes | `hardening_extraction.yml` | Before changes |
-| Regular maintenance | `rule_management.yml` | Weekly |
-| Troubleshooting connectivity | `packet_tracer.yml` | As needed |
-| Complete automation | `main.yml` | Daily/Weekly |
-| Emergency backup | `hardening_extraction.yml` | Immediately |
-
----
-
-## 💡 Getting Started Tips
-
-1. **Start Small:** Begin with `test_connection.yml` to ensure everything works
-2. **Backup First:** Always run `hardening_extraction.yml` before making changes
-3. **Test Mode:** Use report-only mode for `rule_management.yml` initially
-4. **Monitor Logs:** Check the output files to understand what's happening
-5. **Schedule Wisely:** Run automation during low-traffic periods
-
-This automation suite transforms complex, time-consuming FMC management tasks into simple, reliable, automated processes that improve security while reducing administrative overhead.
-
