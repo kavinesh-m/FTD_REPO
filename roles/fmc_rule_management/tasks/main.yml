@@ -1,36 +1,45 @@
 ---
 # FMC Rule Management - Time-based Disable/Delete Tasks
 
-- name: Get FMC Authentication Token
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/generatetoken"
-    method: POST
-    user: "{{ fmc_username }}"
-    password: "{{ fmc_password }}"
-    validate_certs: "{{ validate_certs }}"
-    force_basic_auth: yes
-    timeout: "{{ api_timeout }}"
-    status_code: 204
-  register: auth_response
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
-  until: auth_response.status == 204
-  when: fmc_auth_token is not defined or fmc_auth_token == ""
+- name: Get Domain Information
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllDomain
+  register: domain_response
+  failed_when: false
 
-- name: Set authentication token
+- name: Debug Domain Response
+  debug:
+    var: domain_response
+  when: 
+    - domain_response is defined
+    - debug_mode | default(false) | bool
+
+- name: Set domain UUID from response
   set_fact:
-    auth_token: "{{ auth_response.x_auth_access_token | default(fmc_auth_token | default('')) }}"
-    domain_uuid: "{{ auth_response.domain_uuid | default(domain_uuid) }}"
+    domain_uuid: "{{ domain_response.response['items'][0].uuid }}"
+  when: 
+    - domain_response.response is defined
+    - domain_response.response['items'] is defined
+    - domain_response.response['items'] | length > 0
+
+- name: Validate Domain Access
+  fail:
+    msg: "Failed to obtain domain information from FMC"
+  when: domain_uuid is not defined or domain_uuid == ""
 
 - name: Get All Access Policies
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllAccessPolicy
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
   register: policies
+
+- name: Debug Access Policies
+  debug:
+    var: policies
+  when: 
+    - policies is defined
+    - debug_mode | default(false) | bool
 
 - name: Validate required parameters
   fail:
@@ -47,33 +56,31 @@
     disabled_rules: []
     deleted_rules: []
     rule_summary: {}
-    current_epoch: "{{ ansible_date_time.epoch | int }}"
+    current_epoch: "{{ lookup('pipe', 'date +%s') | int }}"
 
 - name: Get Rules for Each Policy
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.id }}/accessrules"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
-  loop: "{{ policies.json['items'] | default([]) }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllAccessRule
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
+      containerUUID: "{{ item.id }}"
+  loop: "{{ policies.response['items'] | default([]) }}"
   register: policy_rules
   when: 
-    - policies.json is defined
-    - policies.json['items'] | length > 0
+    - policies.response is defined
+    - policies.response['items'] | length > 0
 
 - name: Process Rules and Identify Expired Ones
   set_fact:
-    all_rules: "{{ all_rules + (item.json['items'] | default([])) }}"
+    all_rules: "{{ all_rules + (item.response['items'] | default([])) }}"
   loop: "{{ policy_rules.results | default([]) }}"
   when: 
     - policy_rules is defined
     - policy_rules.results is defined
-    - item.json is defined
-    - item.json['items'] is defined
-    - item.json['items'] is iterable
-    - item.json['items'] | length > 0
+    - item.response is defined
+    - item.response['items'] is defined
+    - item.response['items'] is iterable
+    - item.response['items'] | length > 0
 
 - name: Identify Rules with Expiry Metadata
   set_fact:
@@ -111,13 +118,13 @@
     - rule_backup_before_delete | bool
 
 - name: Disable Expired Rules
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.metadata.policy.id }}/accessrules/{{ item.id }}"
-    method: PUT
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    body_format: json
-    body:
+  cisco.fmcansible.fmc_configuration:
+    operation: updateAccessRule
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
+      containerUUID: "{{ item.metadata.policy.id }}"
+      objectId: "{{ item.id }}"
+    data:
       id: "{{ item.id }}"
       name: "{{ item.name }}"
       enabled: false
@@ -126,8 +133,6 @@
       destinationNetworks: "{{ item.destinationNetworks | default({}) }}"
       sourcePorts: "{{ item.sourcePorts | default({}) }}"
       destinationPorts: "{{ item.destinationPorts | default({}) }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
   loop: "{{ expired_rules }}"
   register: disable_results
   when: 
@@ -140,17 +145,15 @@
     disabled_rules: "{{ disabled_rules + [item.item] }}"
   loop: "{{ disable_results.results | default([]) }}"
   when: 
-    - item.status is defined
-    - item.status == 200
+    - item.response is defined
 
 - name: Delete Expired Rules (if enabled)
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.metadata.policy.id }}/accessrules/{{ item.id }}"
-    method: DELETE
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: deleteAccessRule
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
+      containerUUID: "{{ item.metadata.policy.id }}"
+      objectId: "{{ item.id }}"
   loop: "{{ expired_rules }}"
   register: delete_results
   when: 
@@ -163,8 +166,7 @@
     deleted_rules: "{{ deleted_rules + [item.item] }}"
   loop: "{{ delete_results.results | default([]) }}"
   when: 
-    - item.status is defined
-    - item.status == 200
+    - item.response is defined
 
 - name: Generate Rule Management Summary
   set_fact:
