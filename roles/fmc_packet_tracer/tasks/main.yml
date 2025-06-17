@@ -9,178 +9,356 @@
     - source_ip
     - dest_ip
 
-- name: Get FMC Authentication Token
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/generatetoken"
-    method: POST
-    user: "{{ fmc_username }}"
-    password: "{{ fmc_password }}"
-    validate_certs: "{{ validate_certs }}"
-    force_basic_auth: yes
-    timeout: "{{ api_timeout }}"
-    status_code: [200, 204]
-  register: auth_response
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
-  until: auth_response.status == 204 or auth_response.status == 200
-  when: fmc_auth_token is not defined or fmc_auth_token == ""
+- name: Get Domain Information
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllDomain
+  register: domain_response
+  failed_when: false
 
-- name: Set authentication token
+- name: Debug domain response
+  debug:
+    msg: "Domain response: {{ domain_response }}"
+  when: debug_mode | default(false) | bool
+
+- name: Set domain UUID from response
   set_fact:
-    auth_token: "{{ auth_response.x_auth_access_token | default(fmc_auth_token | default('')) }}"
-    domain_uuid: "{{ auth_response.domain_uuid | default(domain_uuid) }}"
+    domain_uuid: "{{ domain_response.response['items'][0].uuid }}"
+  when: 
+    - domain_response.response is defined
+    - domain_response.response['items'] is defined
+    - domain_response.response['items'] | length > 0
+
+- name: Validate Domain Access
+  fail:
+    msg: "Failed to obtain domain information from FMC"
+  when: domain_uuid is not defined or domain_uuid == ""
 
 - name: Get Available Devices for Packet Tracer
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllDevice
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
   register: devices
+
+- name: Debug devices response
+  debug:
+    msg: "Devices response: {{ devices }}"
+  when: debug_mode | default(false) | bool
 
 - name: Debug available devices
   debug:
-    msg: "Available devices for packet tracing: {{ devices.json['items'] | length }}"
+    msg: 
+     - "Available devices for packet tracing: {{ devices.response['items'] | length }}"
+     - "{{ devices.response['items'][0].id if devices.response['items'] | length > 0 else device_id }}"
   when: debug_mode | default(false) | bool
 
+- name: Debug device details
+  debug:
+    var: devices
+  when: debug_mode | default(false) | bool
+
+# - name: Get Available Physical Interfaces for Selected Device
+#   cisco.fmcansible.fmc_configuration:
+#     # operation: getAllDevicePhysicalInterface
+#     operation: getAllPhysicalInterface
+#     path_params:
+#       containerUUID: "{{ devices.response['items'][0].id if devices.response['items'] | length > 0 else device_id }}"
+#       domainUUID: "{{ domain_uuid }}"
+#     query_params:
+#       limit: 1000
+#   register: physical_interfaces
+#   failed_when: false
+#   when: 
+#     - devices.response is defined
+#     - devices.response['items'] | length > 0
+
+# - name: Debug available physical interfaces
+#   debug:
+#     msg: 
+#       - "Available physical interfaces: {{ physical_interfaces.response['items'] | length if physical_interfaces.response is defined else 0 }}"
+#       - "Interface details: {{ physical_interfaces.response['items'] | map(attribute='name') | list if physical_interfaces.response is defined and physical_interfaces.response['items'] is defined else [] }}"
+#   when: 
+#     - debug_mode | default(false) | bool
+#     - physical_interfaces is defined
+
+# - name: List All Available Interfaces (when list_interfaces is enabled)
+#   debug:
+#     msg:
+#       - "=== AVAILABLE PHYSICAL INTERFACES ==="
+#       - "Device: {{ device_name | default('Unknown') }} ({{ device_id }})"
+#       - "Total Interfaces: {{ physical_interfaces.response['items'] | length if physical_interfaces.response is defined else 0 }}"
+#       - ""
+#       - "Interface List:"
+#   when: 
+#     - list_interfaces | default(false) | bool
+#     - physical_interfaces is defined
+#     - physical_interfaces.response is defined
+
+# - name: Display Interface Details
+#   debug:
+#     msg:
+#       - "  Interface: {{ item.name }}"
+#       - "    ID: {{ item.id }}"
+#       - "    Type: {{ item.type | default('Unknown') }}"
+#       - "    Enabled: {{ item.enabled | default('Unknown') }}"
+#       - "    Hardware: {{ item.hardware | default('Unknown') }}"
+#       - "    MAC Address: {{ item.macAddress | default('Unknown') }}"
+#       - "    Speed: {{ item.speed | default('Unknown') }}"
+#       - "    Duplex: {{ item.duplex | default('Unknown') }}"
+#       - "    MTU: {{ item.mtu | default('Unknown') }}"
+#       - "    Security Zone: {{ item.securityZone.name | default('None') if item.securityZone is defined else 'None' }}"
+#       - "    IP Address: {{ item.ipv4.static.address | default('None') if item.ipv4 is defined and item.ipv4.static is defined else 'DHCP/None' }}"
+#       - "    ---"
+#   loop: "{{ physical_interfaces.response['items'] | default([]) }}"
+#   when: 
+#     - list_interfaces | default(false) | bool
+#     - physical_interfaces is defined
+#     - physical_interfaces.response is defined
+#     - physical_interfaces.response['items'] is defined
+
+# - name: Save Interface List to File (when list_interfaces is enabled)
+#   copy:
+#     content: |
+#       Physical Interfaces Report
+#       =========================
+#       Timestamp: {{ timestamp }}
+#       FMC Host: {{ fmc_host }}
+#       Device: {{ device_name | default('Unknown') }} ({{ device_id }})
+#       Total Interfaces: {{ physical_interfaces.response['items'] | length if physical_interfaces.response is defined else 0 }}
+#       
+#       Interface Details:
+#       {% for interface in physical_interfaces.response['items'] | default([]) %}
+#       - Name: {{ interface.name }}
+#         ID: {{ interface.id }}
+#         Type: {{ interface.type | default('Unknown') }}
+#         Enabled: {{ interface.enabled | default('Unknown') }}
+#         Hardware: {{ interface.hardware | default('Unknown') }}
+#         MAC Address: {{ interface.macAddress | default('Unknown') }}
+#         Speed: {{ interface.speed | default('Unknown') }}
+#         Duplex: {{ interface.duplex | default('Unknown') }}
+#         MTU: {{ interface.mtu | default('Unknown') }}
+#         Security Zone: {{ interface.securityZone.name | default('None') if interface.securityZone is defined else 'None' }}
+#         IP Address: {{ interface.ipv4.static.address | default('None') if interface.ipv4 is defined and interface.ipv4.static is defined else 'DHCP/None' }}
+#       
+#       {% endfor %}
+#     dest: "{{ trace_output_dir }}/interface_list_{{ timestamp }}.txt"
+#     mode: '0644'
+#   delegate_to: localhost
+#   when: 
+#     - list_interfaces | default(false) | bool
+#     - physical_interfaces is defined
+#     - physical_interfaces.response is defined
+
 - name: Get all host objects from FMC
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/hosts?limit=1000"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllHostObject
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
+    query_params:
+      limit: 1000
   register: fmc_hosts
 
 - name: Show all host IPs known to FMC
   debug:
-    msg: "{{ fmc_hosts.json['items'] | map(attribute='name') | list }}"
-  # when: debug_mode | default(false) | bool
+    msg: "{{ fmc_hosts.response['items'] | map(attribute='name') | list }}"
+  when: debug_mode | default(false) | bool
 
 - name: Set default device if not specified
   set_fact:
-    device_id: "{{ devices.json['items'][0].id }}"
-    device_name: "{{ devices.json['items'][0].name }}"
+    device_id: "{{ devices.response['items'][0].id }}"
+    device_name: "{{ devices.response['items'][0].name }}"
   when: 
     - device_id is not defined
-    - devices.json['items'] | length > 0
+    - devices.response['items'] | length > 0
 
 - name: Validate device availability
   fail:
     msg: "No devices available for packet tracing or specified device_id not found"
   when: device_id is not defined
 
+# - name: Set interface parameters if specified
+#   set_fact:
+#     selected_interface: >-
+#       {% if interface_id is defined %}
+#         {{ physical_interfaces.response['items'] | selectattr('id', 'equalto', interface_id) | first | default({}) }}
+#       {% elif interface_name is defined %}
+#         {{ physical_interfaces.response['items'] | selectattr('name', 'equalto', interface_name) | first | default({}) }}
+#       {% else %}
+#         {}
+#       {% endif %}
+#   when: 
+#     - physical_interfaces is defined
+#     - physical_interfaces.response is defined
+#     - physical_interfaces.response['items'] is defined
+
+# - name: Validate interface selection (if interface specified)
+#   fail:
+#     msg: >-
+#       Interface validation failed:
+#       {% if interface_id is defined %}
+#       Interface ID '{{ interface_id }}' not found on device {{ device_name | default('Unknown') }}.
+#       {% elif interface_name is defined %}
+#       Interface name '{{ interface_name }}' not found on device {{ device_name | default('Unknown') }}.
+#       {% endif %}
+#       Available interfaces: {{ physical_interfaces.response['items'] | map(attribute='name') | list | join(', ') if physical_interfaces.response is defined and physical_interfaces.response['items'] is defined else 'None' }}
+#   when:
+#     - (interface_id is defined or interface_name is defined)
+#     - physical_interfaces is defined
+#     - physical_interfaces.response is defined
+#     - physical_interfaces.response['items'] is defined
+#     - (selected_interface is not defined or selected_interface.id is not defined)
+
+# - name: Display selected interface information (if interface specified)
+#   debug:
+#     msg:
+#       - "=== SELECTED INTERFACE ==="
+#       - "Interface: {{ selected_interface.name }}"
+#       - "ID: {{ selected_interface.id }}"
+#       - "Type: {{ selected_interface.type | default('Unknown') }}"
+#       - "Enabled: {{ selected_interface.enabled | default('Unknown') }}"
+#       - "Hardware: {{ selected_interface.hardware | default('Unknown') }}"
+#       - "MAC Address: {{ selected_interface.macAddress | default('Unknown') }}"
+#       - "Security Zone: {{ selected_interface.securityZone.name | default('None') if selected_interface.securityZone is defined else 'None' }}"
+#       - "IP Address: {{ selected_interface.ipv4.static.address | default('None') if selected_interface.ipv4 is defined and selected_interface.ipv4.static is defined else 'DHCP/None' }}"
+#   when:
+#     - selected_interface is defined
+#     - selected_interface.id is defined
+#     - debug_mode | default(false) | bool
+
+# - name: Prepare packet tracer parameters
+#   set_fact:
+#     tracer_params: >-
+#       {
+#         "device": {
+#           "id": "{{ device_id }}",
+#           "type": "Device",
+#           "name": "{{ device_name | default('Unknown') }}"
+#         },
+#         "protocol": "{{ protocol | default(default_protocol) | upper }}",
+#         "sourceIPType": "IPv4",
+#         "sourceIPValue": "{{ source_ip }}",
+#         "destinationIPType": "IPv4",
+#         "destinationIPValue": "{{ dest_ip }}",
+#         "sourcePort": {{ source_port | default(default_source_port) | int }},
+#         "destinationPort": {{ dest_port | default(default_dest_port) | int }}
+#         {% if selected_interface is defined and selected_interface.id is defined %},
+#         "interface": {
+#           "id": "{{ selected_interface.id }}",
+#           "type": "PhysicalInterface",
+#           "name": "{{ selected_interface.name | default('Unknown') }}"
+#         }
+#         {% endif %}
+#       }
+
+
+- name: Execute 'getAllInterfaceObject' operation
+  cisco.fmcansible.fmc_configuration:
+    operation: "getAllInterfaceObject"
+    path_params:
+        domainUUID: "{{ domain_uuid }}"
+    query_params:
+        limit: 1000
+  register: interface_objects
+
+- name: Debug interface objects response first 5 items
+  debug:
+    msg: "Interface objects response: {{ interface_objects.response['items'][:5] }}"
+  when: debug_mode | default(false) | bool
+
+- name: Filter out SecurityZone interface objects
+  set_fact:
+    non_securityzone_interfaces: "{{ interface_objects.response['items'] | rejectattr('type', 'equalto', 'SecurityZone') | list }}"
+
+- name: Debug filtered interfaces
+  debug:
+    var: non_securityzone_interfaces[0]
+  when: debug_mode | default(false) | bool and non_securityzone_interfaces is defined
+
+# - name: Set interface variables from first interface object
+#   set_fact:
+#     interface_id: "{{ interface_objects.response['items'][0].id }}"
+#     interface_type: "{{ interface_objects.response['items'][0].type }}"
+#     interface_name: "{{ interface_objects.response['items'][0].name }}"
+#   when:
+#     - interface_objects.response is defined
+#     - interface_objects.response['items'] is defined
+#     - interface_objects.response['items'] | length > 0
+#     - (interface_id is not defined or interface_id == "") and (interface_name is not defined or interface_name == "")
+
+- name: Set interface variables from first interface object
+  set_fact:
+    interface_id: "{{ non_securityzone_interfaces[0].id }}"
+    interface_type: "{{ non_securityzone_interfaces[0].type }}"
+    interface_name: "{{ non_securityzone_interfaces[0].name }}"
+  when:
+    - non_securityzone_interfaces is defined
+    - non_securityzone_interfaces | length > 0
+    - (interface_id is not defined or interface_id == "") and (interface_name is not defined or interface_name == "")
+
 - name: Prepare packet tracer parameters
   set_fact:
     tracer_params:
-      sourceIP: "{{ source_ip }}"
-      destinationIP: "{{ dest_ip }}"
-      sourcePort: "{{ source_port | default(default_source_port) }}"
-      destinationPort: "{{ dest_port | default(default_dest_port) }}"
-      protocol: "{{ protocol | default(default_protocol) }}"
-      deviceId: "{{ device_id }}"
+      device:
+        id: "{{ device_id }}"
+        type: "Device"
+        name: "{{ device_name | default('Unknown') }}"
+      protocol: "{{ protocol | default(default_protocol) | upper }}"
+      sourceIPType: "IPv4"
+      sourceIPValue: "{{ source_ip }}"
+      destinationIPType: "IPv4"
+      destinationIPValue: "{{ dest_ip }}"
+      sourcePort: "{{ source_port | default(default_source_port) | string }}"
+      destinationPort: "{{ dest_port | default(default_dest_port) | string }}"
+      interface:
+        id: "{{ interface_id }}"
+        type: "{{ interface_type }}"
+        name: "{{ interface_name }}"
 
-- name: Debug packet tracer URL variables
+- name: Debug packet tracer parameters
   debug:
     msg:
-      - "fmc_protocol: {{ fmc_protocol }}"
       - "fmc_host: {{ fmc_host }}"
       - "domain_uuid: {{ domain_uuid }}"
-      - "packettracer URL: {{ fmc_protocol }}://{{ fmc_host }}/api/fmc_troubleshoot/v1/domain/{{ domain_uuid }}/packettracer"
+      - "device_id: {{ device_id }}"
+      - "device_name: {{ device_name | default('Unknown') }}"
+      - "tracer_params: {{ tracer_params }}"
   when: debug_mode | default(false) | bool
 
+# https://github.com/CiscoDevNet/FMCAnsible/blob/9b5dccf7c6ba6dcb75e2c073fb8b5f4bcaec5ca0/samples/docs/operations/create_packet_tracer.md?plain=1
 - name: Try Packet Tracer with Primary API Endpoint
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_troubleshoot/v1/domain/{{ domain_uuid }}/packettracer"
-    method: POST
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-      Content-Type: "application/json"
-    body_format: json
-    body: "{{ tracer_params }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: createPacketTracer
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
+    data: "{{ tracer_params }}"
   register: tracer_result_primary
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
   failed_when: false
 
-- name: Try Alternative Packet Tracer API Endpoint (if primary fails)
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/packettracer"
-    method: POST
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-      Content-Type: "application/json"
-    body_format: json
-    body: "{{ tracer_params }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
-  register: tracer_result_alt
-  when: tracer_result_primary.status != 200
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
-  failed_when: false
+- name: Debug primary packet tracer result
+  debug:
+    msg: "Primary packet tracer result: {{ tracer_result_primary }}"
+  when: debug_mode | default(false) | bool
 
-- name: Try Third Alternative Packet Tracer API Endpoint
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/firepower/device-management/v1/packet-tracer"
-    method: POST
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-      Content-Type: "application/json"
-    body_format: json
-    body: "{{ tracer_params }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
-  register: tracer_result_third
-  when: 
-    - tracer_result_primary.status != 200
-    - tracer_result_alt.status is not defined or tracer_result_alt.status != 200
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
-  failed_when: false
+# Alternative endpoints removed - cisco.fmcansible handles the correct endpoint automatically
 
 - name: Set successful tracer result
   set_fact:
     tracer_result: "{{ tracer_result_primary }}"
-  when: tracer_result_primary.status == 200
-
-- name: Set successful tracer result (alternative endpoint)
-  set_fact:
-    tracer_result: "{{ tracer_result_alt }}"
-  when: 
-    - tracer_result_primary.status != 200
-    - tracer_result_alt.status is defined and tracer_result_alt.status == 200
-
-- name: Set successful tracer result (third endpoint)
-  set_fact:
-    tracer_result: "{{ tracer_result_third }}"
-  when: 
-    - tracer_result_primary.status != 200
-    - (tracer_result_alt.status is not defined or tracer_result_alt.status != 200)
-    - tracer_result_third.status is defined and tracer_result_third.status == 200
+  when: tracer_result_primary.response is defined
 
 - name: Handle packet tracer failure
   set_fact:
     tracer_result:
-      status: 404
-      json:
-        error: "Packet tracer functionality not available in this FMC environment"
-        attempted_endpoints:
-          - "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_troubleshoot/v1/domain/{{ domain_uuid }}/packettracer"
-          - "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/packettracer"
-          - "{{ fmc_protocol }}://{{ fmc_host }}/api/firepower/device-management/v1/packet-tracer"
-        primary_error: "{{ tracer_result_primary.json | default('Unknown error') }}"
-        alternative_error: "{{ tracer_result_alt.json | default('Not attempted') if tracer_result_alt is defined else 'Not attempted' }}"
-        third_error: "{{ tracer_result_third.json | default('Not attempted') if tracer_result_third is defined else 'Not attempted' }}"
-  when: 
-    - tracer_result_primary.status != 200
-    - (tracer_result_alt.status is not defined or tracer_result_alt.status != 200)
-    - (tracer_result_third.status is not defined or tracer_result_third.status != 200)
+      response: null
+      error:
+        message: "Packet tracer functionality not available in this FMC environment"
+        details: "{{ tracer_result_primary.msg | default('Unknown error') }}"
+  when: tracer_result_primary.response is not defined
+
+- name: Debug packet tracer result
+  debug:
+    msg: "Packet tracer result: {{ tracer_result }}"
+  when: debug_mode | default(false) | bool
 
 - name: Set timestamp variable
   set_fact:
@@ -194,8 +372,15 @@
       device_name: "{{ device_name | default('Unknown') }}"
       device_id: "{{ device_id }}"
       trace_parameters: "{{ tracer_params }}"
-      trace_results: "{{ tracer_result.json }}"
-      trace_status: "{{ 'SUCCESS' if tracer_result.status == 200 else 'FAILED' }}"
+      trace_results: >-
+        {% if tracer_result.response is defined and tracer_result.response %}
+          {{ tracer_result.response }}
+        {% elif tracer_result.error is defined %}
+          {{ tracer_result.error }}
+        {% else %}
+          {}
+        {% endif %}
+      trace_status: "{{ 'SUCCESS' if tracer_result.response is defined and tracer_result.response else 'FAILED' }}"
 
 - name: Save Packet Tracer Results to JSON
   copy:
@@ -221,7 +406,7 @@
       - Protocol: {{ protocol | default(default_protocol) }}
       
       Results:
-      {{ tracer_result.json | to_nice_yaml }}
+      {{ tracer_result.response | default(tracer_result.error | default({})) | to_nice_yaml }}
     dest: "{{ trace_output_dir }}/packet_trace_detailed_{{ timestamp }}.log"
     mode: '0644'
   delegate_to: localhost
@@ -229,7 +414,7 @@
 - name: Log Packet Tracer Activity
   lineinfile:
     path: "{{ log_output_dir }}/packet_tracer.log"
-    line: "{{ timestamp }} - Packet Trace on {{ fmc_host }} - {{ source_ip }}:{{ source_port | default(default_source_port) }} -> {{ dest_ip }}:{{ dest_port | default(default_dest_port) }} - Status: {{ 'SUCCESS' if tracer_result.status == 200 else 'FAILED' }}"
+    line: "{{ timestamp }} - Packet Trace on {{ fmc_host }} - {{ source_ip }}:{{ source_port | default(default_source_port) }} -> {{ dest_ip }}:{{ dest_port | default(default_dest_port) }} - Status: {{ 'SUCCESS' if tracer_result.response is defined else 'FAILED' }}"
     create: yes
     mode: '0644'
   delegate_to: localhost
@@ -243,13 +428,13 @@
       - "Source: {{ source_ip }}:{{ source_port | default(default_source_port) }}"
       - "Destination: {{ dest_ip }}:{{ dest_port | default(default_dest_port) }}"
       - "Protocol: {{ protocol | default(default_protocol) }}"
-      - "Status: {{ 'SUCCESS' if tracer_result.status == 200 else 'FAILED' }}"
+      - "Status: {{ 'SUCCESS' if tracer_result.response is defined else 'FAILED' }}"
       - "Results saved to: {{ trace_output_dir }}/packet_trace_{{ timestamp }}.json"
-      - "{% if tracer_result.status != 200 %}NOTE: Packet tracer may not be available in DevNet sandbox environments{% endif %}"
+      - "{% if tracer_result.response is not defined %}NOTE: Packet tracer may not be available in DevNet sandbox environments{% endif %}"
 
 - name: Display Trace Results (if successful)
   debug:
-    var: tracer_result.json
+    var: tracer_result.response
   when: 
-    - tracer_result.status == 200
+    - tracer_result.response is defined
     - debug_mode | default(false) | bool

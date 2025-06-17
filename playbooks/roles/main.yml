@@ -1,7 +1,7 @@
 ---
 - name: FMC Complete Automation Suite (Role-based)
   hosts: fmc_servers
-  gather_facts: true
+  gather_facts: false
   
   roles:
     # Common setup and validation
@@ -33,6 +33,9 @@
         - run_packet_tracer | default(false) | bool
         - source_ip is defined
         - dest_ip is defined
+        - interface_id is defined
+        - interface_name is defined
+        - interface_type is defined
 
   post_tasks:
     - name: Display Final Summary

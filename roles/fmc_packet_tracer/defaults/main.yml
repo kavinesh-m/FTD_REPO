@@ -28,3 +28,9 @@ generate_html_reports: true
 # dest_port: ""
 # protocol: ""
 # device_id: ""
+
+# Interface parameters
+# interface_id: ""        # Specify interface by ID
+# interface_name: ""      # Specify interface by name
+# list_interfaces: false  # Set to true to list all available interfaces
+# interface_type: ""      # Specify interface type 
