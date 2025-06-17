@@ -31,3 +31,5 @@ log_level: "INFO"
 log_to_file: true
 log_rotation: true
 max_log_files: 10
+
+debug_mode: true

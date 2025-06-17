@@ -1,115 +1,98 @@
 ---
-# FMC Connection Test Tasks
-- name: Test FMC Connectivity
-  uri:
-    url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_platform/v1/info/serverversion"
-    method: GET
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout | default(30) }}"
-  register: connectivity_test
+# FMC Connection Test Tasks using cisco.fmcansible collection
+
+- name: Test FMC Connection and Get Server Version
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllServerVersion
+  register: server_version_test
   failed_when: false
 
-- name: Display Connectivity Results
+- name: Degug Server Version Test
+  debug:
+    var: server_version_test
+  when: debug_mode | default(false) | bool
+
+- name: Display Server Version Test Results
   debug:
     msg:
-      - "FMC Connectivity Test Results:"
+      - "FMC Server Version Test Results:"
       - "Host: {{ ansible_host }}"
-      - "Status: {{ 'SUCCESS' if connectivity_test.status == 401 or connectivity_test.status == 200 else 'FAILED' }}"
-      - "HTTP Status: {{ connectivity_test.status }}"
-      - "Note: Status 401 is expected without authentication - this confirms FMC is reachable"
+      - "Status: {{ 'SUCCESS' if server_version_test.response is defined else 'FAILED' }}"
+      - "FMC Version: {{ server_version_test.response['items'][0].serverVersion | default('Unknown') }}"
+      - "Model: {{ server_version_test.response['items'][0].model | default('Unknown') }}"
+      - "Hostname: {{ server_version_test.response['items'][0].hostname | default('Unknown') }}"
+      - "Uptime: {{ server_version_test.response['items'][0].uptime | default('Unknown') }}"
+  when: server_version_test.response is defined
 
-- name: Test FMC Authentication
-  uri:
-    url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_platform/v1/auth/generatetoken"
-    method: POST
-    user: "{{ fmc_username }}"
-    password: "{{ fmc_password }}"
-    validate_certs: "{{ validate_certs }}"
-    force_basic_auth: yes
-    timeout: "{{ api_timeout | default(30) }}"
-  register: auth_test
-  failed_when: false
-
-- name: Display Authentication Results
+- name: Display Server Version Test Failure
   debug:
     msg:
-      - "FMC Authentication Test Results:"
-      - "Status: {{ 'SUCCESS' if auth_test.status == 204 else 'FAILED' }}"
-      - "HTTP Status: {{ auth_test.status }}"
-      - "Auth Token Present: {{ 'YES' if auth_test.x_auth_access_token is defined else 'NO' }}"
-      - "Domain UUID: {{ auth_test.domain_uuid | default('Not provided') }}"
-
-- name: Test API Access (if authentication successful)
-  uri:
-    url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_platform/v1/info/serverversion"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout | default(30) }}"
-  register: api_test
-  when: auth_test.status == 204
-  failed_when: false
-
-- name: Display API Test Results
-  debug:
-    msg:
-      - "FMC API Access Test Results:"
-      - "Status: {{ 'SUCCESS' if (api_test.status | default(0)) == 200 else 'FAILED' }}"
-      - "FMC Version: {{ api_test.json['items'][0].serverVersion | default('Unknown') }}"
-      - "Model: {{ api_test.json['items'][0].model | default('Unknown') }}"
-      - "Hostname: {{ api_test.json['items'][0].hostname | default('Unknown') }}"
-      - "Uptime: {{ api_test.json['items'][0].uptime | default('Unknown') }}"
-  when: 
-    - auth_test.status == 204
-    - api_test.status == 200
-
-- name: Display API Test Failure
-  debug:
-    msg:
-      - "FMC API Access Test Results:"
+      - "FMC Server Version Test Results:"
       - "Status: FAILED"
-      - "HTTP Status: {{ api_test.status | default('N/A') }}"
-      - "Error: {{ api_test.msg | default('API test failed') }}"
-  when: auth_test.status == 204 and (api_test.status is undefined or api_test.status != 200)
+      - "Error: {{ server_version_test.msg | default('Connection test failed') }}"
+  when: server_version_test.response is not defined
 
 - name: Test Domain Access
-  uri:
-    url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout | default(30) }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllDomain
   register: domain_test
-  when: auth_test.status == 204
   failed_when: false
+
+- name: Debug Domain Test
+  debug:
+    var: domain_test
+  when: debug_mode | default(false) | bool
 
 - name: Display Domain Test Results
   debug:
     msg:
       - "FMC Domain Access Test Results:"
-      - "Status: {{ 'SUCCESS' if domain_test.status == 200 else 'FAILED' }}"
-      - "Domain UUID: {{ domain_uuid }}"
-      - "Access Policies Found: {{ domain_test.json.paging.count | default(0) }}"
-  when: auth_test.status == 204
+      - "Status: {{ 'SUCCESS' if domain_test.response is defined else 'FAILED' }}"
+      - "Domains Found: {{ domain_test.response['items'] | length | default(0) }}"
+      - "Available Domains:"
+  when: domain_test.response is defined
+
+- name: List Available Domains
+  debug:
+    msg: "  - {{ item.name }} (UUID: {{ item.uuid }})"
+  loop: "{{ domain_test.response['items'] | default([]) }}"
+  when: domain_test.response is defined
+
+- name: Test Access Policy Access (if domain test successful)
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllAccessPolicy
+    path_params:
+      domainUUID: "{{ domain_test.response['items'][0].uuid }}"
+  register: access_policy_test
+  when: domain_test.response is defined and domain_test.response['items'] | length > 0
+  failed_when: false
+
+- name: Display Access Policy Test Results
+  debug:
+    msg:
+      - "FMC Access Policy Test Results:"
+      - "Status: {{ 'SUCCESS' if access_policy_test.response is defined else 'FAILED' }}"
+      - "Access Policies Found: {{ access_policy_test.response | length | default(0) }}"
+  when: 
+    - domain_test.response is defined
+    - access_policy_test is defined
 
 - name: Overall Test Summary
   debug:
     msg:
       - "=== FMC CONNECTION TEST SUMMARY ==="
       - "FMC Host: {{ ansible_host }}"
-      - "Connectivity: {{ 'PASS' if connectivity_test.status == 401 or connectivity_test.status == 200 else 'FAIL' }}"
-      - "Authentication: {{ 'PASS' if auth_test.status == 204 else 'FAIL' }}"
-      - "API Access: {{ 'PASS' if api_test.status == 200 else 'FAIL' if auth_test.status == 204 else 'SKIPPED' }}"
-      - "Domain Access: {{ 'PASS' if domain_test.status == 200 else 'FAIL' if auth_test.status == 204 else 'SKIPPED' }}"
-      - "Overall Status: {{ 'READY FOR AUTOMATION' if (auth_test.status == 204 and api_test.status == 200 and domain_test.status == 200) else 'NEEDS ATTENTION' }}"
+      - "Server Version: {{ 'PASS' if server_version_test.response is defined else 'FAIL' }}"
+      - "Domain Access: {{ 'PASS' if domain_test.response is defined else 'FAIL' }}"
+      - "Access Policy Access: {{ 'PASS' if access_policy_test.response is defined else 'FAIL' if domain_test.response is defined else 'SKIPPED' }}"
+      - "Overall Status: {{ 'READY FOR AUTOMATION' if (server_version_test.response is defined and domain_test.response is defined) else 'NEEDS ATTENTION' }}"
 
 - name: Set connection test results
   set_fact:
-    fmc_connection_test_passed: "{{ auth_test.status == 204 and api_test.status == 200 and domain_test.status == 200 }}"
-    fmc_auth_token: "{{ auth_test.x_auth_access_token | default('') }}"
-    fmc_domain_uuid: "{{ auth_test.domain_uuid | default(domain_uuid) }}"
+    fmc_connection_test_passed: "{{ server_version_test.response is defined and domain_test.response is defined }}"
+    fmc_server_version: "{{ server_version_test.response.items[0].serverVersion | default('Unknown') }}"
+    fmc_domain_uuid: "{{ domain_test.response.items[0].uuid | default('') }}"
+    fmc_domain_name: "{{ domain_test.response.items[0].name | default('') }}"
 
 - name: Fail if critical tests failed
   fail:

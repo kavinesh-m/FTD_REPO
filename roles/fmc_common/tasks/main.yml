@@ -2,8 +2,8 @@
 # FMC Common Tasks - Shared functionality across all FMC roles
 
 - name: Set timestamp variable
-  set_fact:
-    timestamp: "{{ ansible_date_time.date }}_{{ ansible_date_time.time | replace(':', '-') }}"
+  ansible.builtin.set_fact:
+    timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
   when: timestamp is not defined
 
 - name: Create all output directories
