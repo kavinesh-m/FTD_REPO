@@ -3,13 +3,8 @@
 # Health monitoring setup per security requirements
 
 - name: Get Server Version Information
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/serverversion"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllServerVersion
   register: server_version_info
   failed_when: false
   when: health_monitoring_enabled | bool
@@ -19,49 +14,39 @@
     var: server_version_info
 
 - name: Get Domain Information
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/domain/{{ domain_uuid }}"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getDomain
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
   register: domain_info
   failed_when: false
   when: health_monitoring_enabled | bool
 
-  ## BUG: 404
 - name: Debug Domain Information
   debug:
     var: domain_info
 
 - name: Get Available Upgrade Packages (Health Indicator)
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/updates/upgradepackages"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllUpgradePackage
   register: upgrade_packages
   failed_when: false
   when: health_monitoring_enabled | bool
 
-  ## BUG: 404
 - name: Debug Upgrade Packages Information
   debug:
     var: upgrade_packages
 
 - name: Analyze Health Monitoring Configuration
   set_fact:
-    server_version_available: "{{ server_version_info.json is defined }}"
-    domain_info_available: "{{ domain_info.json is defined }}"
-    upgrade_packages_available: "{{ upgrade_packages.json is defined }}"
+    server_version_available: "{{ server_version_info.response is defined }}"
+    domain_info_available: "{{ domain_info.response is defined }}"
+    upgrade_packages_available: "{{ upgrade_packages.response is defined }}"
   when: health_monitoring_enabled | bool
 
 - name: Check System Health Status
   set_fact:
-    system_health_status: "{{ server_version_info.json | default({}) }}"
+    system_health_status: "{{ server_version_info.response | default({}) }}"
     critical_services_down: 0
   when: 
     - health_monitoring_enabled | bool
@@ -115,9 +100,9 @@
   debug:
     msg:
       - "System Information Status:"
-      - "Server Version: {{ server_version_info.json.serverVersion | default('N/A') if server_version_info.json is defined else 'N/A' }}"
-      - "Domain UUID: {{ domain_info.json.uuid | default('N/A') if domain_info.json is defined else 'N/A' }}"
-      - "Available Upgrade Packages: {{ (upgrade_packages.json.items | length) if (upgrade_packages.json is defined and (upgrade_packages.json.items is defined and upgrade_packages.json.items is iterable)) else 0 }}"
+      - "Server Version: {{ server_version_info.response['items'][0].serverVersion | default('N/A') if server_version_info.response is defined and server_version_info.response['items'] is defined and server_version_info.response['items'] | length > 0 else 'N/A' }}"
+      - "Domain UUID: {{ domain_info.response['items'][0].uuid | default('N/A') if domain_info.response is defined and domain_info.response['items'] is defined and domain_info.response['items'] | length > 0 else 'N/A' }}"
+      - "Available Upgrade Packages: {{ (upgrade_packages.response['items'] | length) if (upgrade_packages.response is defined and (upgrade_packages.response['items'] is defined and upgrade_packages.response['items'] is iterable)) else 0 }}"
   when: 
     - health_monitoring_enabled | bool
     - (server_version_available | default(false)) or (domain_info_available | default(false)) or (upgrade_packages_available | default(false))

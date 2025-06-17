@@ -3,36 +3,24 @@
 # 3.3 Management Access Control List - H-Cloud Approved IP Ranges
 
 - name: Get Current Management Access List
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/accesslist"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAccessList
   register: current_access_list
   failed_when: false
   when: management_acl_enabled | bool
 
-## BUG: 404
 - name: Debug Current Access List
   debug:
     var: current_access_list
   when: management_acl_enabled | bool
 
 - name: Get SSH Access Configuration
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sshaccess"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getSSHAccess
   register: current_ssh_access
   failed_when: false
   when: management_acl_enabled | bool
 
-## BUG: 404
 - name: Debug Current SSH Access Configuration
   debug:
     var: current_ssh_access
@@ -40,8 +28,8 @@
 
 - name: Analyze Current Access Control Configuration
   set_fact:
-    access_list_configured: "{{ current_access_list.json is defined and current_access_list.json.items is defined }}"
-    ssh_access_configured: "{{ current_ssh_access.json is defined }}"
+    access_list_configured: "{{ current_access_list.response is defined and current_access_list.response.items is defined }}"
+    ssh_access_configured: "{{ current_ssh_access.response is defined }}"
   when: management_acl_enabled | bool
 
 - name: Check Access Control Compliance
@@ -53,10 +41,10 @@
   block:
     - name: Extract Current SSH Allowed IPs
       set_fact:
-        current_ssh_ips: "{{ current_ssh_access.json.allowedIPs | default([]) }}"
+        current_ssh_ips: "{{ current_ssh_access.response.allowedIPs | default([]) }}"
       when: 
-        - current_ssh_access.json is defined
-        - current_ssh_access.json.allowedIPs is defined
+        - current_ssh_access.response is defined
+        - current_ssh_access.response.allowedIPs is defined
 
     - name: Check if All Required IPs are Present
       set_fact:
@@ -73,26 +61,16 @@
     - ssh_access_configured | default(false)
 
 - name: Configure SSH Access Control (if apply_hardening is enabled)
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sshaccess"
-    method: PUT
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
+  cisco.fmcansible.fmc_configuration:
+    operation: updateSSHAccess
+    data:
       allowedIPs: "{{ allowed_management_ips }}"
       type: "SSHAccess"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
-    status_code: [200, 201]
   register: ssh_access_update
   when: 
     - management_acl_enabled | bool
     - apply_hardening | bool
     - not (access_control_compliant | default(false))
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
 
 ## BUG: 404
 - name: Debug SSH Access Update Response
@@ -110,7 +88,7 @@
     - management_acl_enabled | bool
     - apply_hardening | bool
     - ssh_access_update is defined
-    - ssh_access_update.status in [200, 201]
+    - ssh_access_update.response is defined
 
 - name: Record Access Control Compliance Status
   set_fact:
@@ -121,7 +99,7 @@
         'compliant': access_control_compliant | default(false),
         'missing_ips': missing_ips | default([]),
         'extra_ips': extra_ips | default([]),
-        'applied': (ssh_access_update.status is defined and ssh_access_update.status in [200, 201]) | default(false),
+        'applied': (ssh_access_update.response is defined) | default(false),
         'recommendation': 'Configure SSH access to allow only H-Cloud approved IP ranges'
       } }) }}"
   when: management_acl_enabled | bool
@@ -134,7 +112,7 @@
       - "Access Control Compliant: {{ access_control_compliant | default(false) }}"
       - "{% if missing_ips is defined and missing_ips | length > 0 %}Missing Required IPs: {{ missing_ips | join(', ') }}{% endif %}"
       - "{% if extra_ips is defined and extra_ips | length > 0 %}Unauthorized IPs Found: {{ extra_ips | join(', ') }}{% endif %}"
-      - "{% if apply_hardening and ssh_access_update is defined %}SSH Access Applied: {{ ssh_access_update.status in [200, 201] }}{% endif %}"
+      - "{% if apply_hardening and ssh_access_update is defined %}SSH Access Applied: {{ ssh_access_update.response is defined }}{% endif %}"
   when: management_acl_enabled | bool
 
 - name: Manual Configuration Instructions for Access Control

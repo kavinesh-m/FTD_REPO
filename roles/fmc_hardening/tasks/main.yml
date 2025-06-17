@@ -17,36 +17,29 @@
       - "Validate Compliance: {{ validate_compliance }}"
       - "Timestamp: {{ timestamp }}"
 
-- name: Get FMC Authentication Token
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/generatetoken"
-    method: POST
-    user: "{{ fmc_username }}"
-    password: "{{ fmc_password }}"
-    validate_certs: "{{ validate_certs }}"
-    force_basic_auth: yes
-    timeout: "{{ api_timeout }}"
-    status_code: [200, 204]
-  register: auth_response
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
-  until: auth_response.status == 204 or auth_response.status == 200
-  when: fmc_auth_token is not defined or fmc_auth_token == ""
+- name: Get Domain Information
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllDomain
+  register: domain_response
+  failed_when: false
 
-# - name: Set authentication token
-#   set_fact:
-#     auth_token: "{{ auth_response.x_auth_access_token if auth_response is defined else fmc_auth_token }}"
-#     domain_uuid: "{{ auth_response.domain_uuid | default(fmc_domain_uuid | default(domain_uuid)) }}"
+- name: Debug Domain Response
+  debug:
+    var: domain_response
+  when: debug_mode | default(false) | bool
 
-- name: Set authentication token
+- name: Set domain UUID from response
   set_fact:
-    auth_token: "{{ auth_response.x_auth_access_token | default(fmc_auth_token | default('')) }}"
-    domain_uuid: "{{ auth_response.domain_uuid | default(domain_uuid) }}"
+    domain_uuid: "{{ domain_response.response['items'][0].uuid }}"
+  when: 
+    - domain_response.response is defined
+    - domain_response.response['items'] is defined
+    - domain_response.response['items'] | length > 0
 
-- name: Validate Authentication
+- name: Validate Domain Access
   fail:
-    msg: "Failed to obtain valid authentication token from FMC"
-  when: auth_token is not defined or auth_token == ""
+    msg: "Failed to obtain domain information from FMC"
+  when: domain_uuid is not defined or domain_uuid == ""
 
 # ===== SECURITY HARDENING IMPLEMENTATION =====
 # Execute hardening tasks based on H-Cloud Security Benchmark
@@ -79,71 +72,52 @@
 # Extract current configuration for documentation and compliance tracking
 
 - name: Get System Information for Baseline
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/serverversion"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllServerVersion
   register: system_info
   when: extract_system_info | bool
 
 - name: Get All Access Policies for Baseline
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllAccessPolicy
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
   register: access_policies
   when: extract_access_policies | bool
 
 - name: Get Network Policies for Baseline
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/prefilterpolicies"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllPrefilterPolicy
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
   register: network_policies
   failed_when: false
   when: extract_network_policies | bool
 
 - name: Get Device Information for Baseline
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllDevice
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
   register: devices
   when: extract_devices | bool
 
 - name: Get Network Objects for Baseline
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/networks"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllNetworkObject
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
   register: network_objects
   when: extract_network_objects | bool
 
-- name: Get Port Objects for Baseline
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/ports"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
-  register: port_objects
-  when: extract_port_objects | bool
+## TODO: getAllPortObject not found in FMC API documentation
+# - name: Get Port Objects for Baseline
+#   cisco.fmcansible.fmc_configuration:
+#     operation: getAllPortObject
+#     path_params:
+#       domainUUID: "{{ domain_uuid }}"
+#   register: port_objects
+#   when: extract_port_objects | bool
 
 - name: Compile Hardening Configuration Data
   set_fact:
@@ -154,12 +128,12 @@
         extracted_by: "{{ ansible_user | default('ansible') }}"
         hardening_applied: "{{ apply_hardening | bool }}"
         compliance_validated: "{{ validate_compliance | bool }}"
-      system_info: "{{ system_info.json | default({}) }}"
-      access_policies: "{{ access_policies.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
-      network_policies: "{{ network_policies.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) if network_policies.status is defined and network_policies.status == 200 else {'items': [], 'paging': {'count': 0, 'limit': 0}} }}"
-      devices: "{{ devices.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
-      network_objects: "{{ network_objects.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
-      port_objects: "{{ port_objects.json | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
+      system_info: "{{ system_info.response | default({}) }}"
+      access_policies: "{{ access_policies.response | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
+      network_policies: "{{ network_policies.response | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) if network_policies.response is defined else {'items': [], 'paging': {'count': 0, 'limit': 0}} }}"
+      devices: "{{ devices.response | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
+      network_objects: "{{ network_objects.response | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
+      # port_objects: "{{ port_objects.response | default({'items': [], 'paging': {'count': 0, 'limit': 0}}) }}"
 
 # ===== COMPLIANCE REPORTING =====
 # Generate comprehensive compliance report
@@ -199,4 +173,4 @@
       - "Generated Files:"
       - "- Baseline Config: {{ config_output_dir }}/fmc_hardening_baseline_{{ timestamp }}.json"
       - "{% if compliance_report_enabled %}- Compliance Report: {{ config_output_dir }}/fmc_compliance_report_{{ timestamp }}.json{% endif %}"
-      - "{% if generate_html_reports and compliance_report_enabled %}- HTML Report: {{ config_output_dir }}/fmc_compliance_report_{{ timestamp }}.html{% endif %}"
+      # - "{% if generate_html_reports and compliance_report_enabled %}- HTML Report: {{ config_output_dir }}/fmc_compliance_report_{{ timestamp }}.html{% endif %}"

@@ -3,13 +3,8 @@
 # 3.1.1 Hostname Configuration per H-Cloud Naming Convention
 
 - name: Get Current System Information for Hostname Validation
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/serverversion"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllServerVersion
   register: current_system_info
   when: hostname_format_validation | bool
 
@@ -21,12 +16,12 @@
 
 - name: Extract Current Hostname
   set_fact:
-    # current_hostname: "{{ (current_system_info.json.items | first).hostname | default('UNKNOWN') }}"
-    current_hostname: "{{ current_system_info.json['items'][0].hostname | default('Unknown') }}"
+    current_hostname: "{{ current_system_info.response.items[0].hostname | default('Unknown') }}"
   when: 
     - hostname_format_validation | bool
-    - current_system_info.json is defined
-    - current_system_info.json.items is defined
+    - current_system_info.response is defined
+    - current_system_info.response['items'] is defined
+    - current_system_info.response['items'] | length > 0
 
 - name: Debug Current Hostname
   debug:

@@ -3,25 +3,19 @@
 # 3.1.2 Warning Banner per Security Requirements
 
 - name: Get Current Login Banner Configuration
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/loginbanner"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getLoginBanner
   register: current_banner
   failed_when: false
   when: warning_banner_enabled | bool
 
 - name: Check if Banner is Configured
   set_fact:
-    banner_configured: "{{ current_banner.json.loginBanner is defined and current_banner.json.loginBanner != '' }}"
-    banner_compliant: "{{ current_banner.json.loginBanner is defined and (warning_banner_message.strip() in current_banner.json.loginBanner) }}"
+    banner_configured: "{{ current_banner.response.loginBanner is defined and current_banner.response.loginBanner != '' }}"
+    banner_compliant: "{{ current_banner.response.loginBanner is defined and (warning_banner_message.strip() in current_banner.response.loginBanner) }}"
   when: 
     - warning_banner_enabled | bool
-    - current_banner.status is defined
-    - current_banner.status == 200
+    - current_banner.response is defined
 
 - name: Set Banner Status for Failed API Call
   set_fact:
@@ -29,29 +23,19 @@
     banner_compliant: false
   when: 
     - warning_banner_enabled | bool
-    - (current_banner.status is not defined or current_banner.status != 200)
+    - current_banner.response is not defined
 
 - name: Configure Warning Banner (if apply_hardening is enabled)
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/auth/loginbanner"
-    method: PUT
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
+  cisco.fmcansible.fmc_configuration:
+    operation: updateLoginBanner
+    data:
       loginBanner: "{{ warning_banner_message }}"
       type: "LoginBanner"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
-    status_code: [200, 201]
   register: banner_update
   when: 
     - warning_banner_enabled | bool
     - apply_hardening | bool
     - not (banner_compliant | default(false))
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
 
 - name: Update Banner Compliance Status After Configuration
   set_fact:
@@ -60,7 +44,7 @@
     - warning_banner_enabled | bool
     - apply_hardening | bool
     - banner_update is defined
-    - banner_update.status in [200, 201]
+    - banner_update.response is defined
 
 - name: Record Banner Compliance Status
   set_fact:
@@ -69,7 +53,7 @@
         'status': banner_compliant | default(false),
         'configured': banner_configured | default(false),
         'compliant': banner_compliant | default(false),
-        'applied': (banner_update.status is defined and banner_update.status in [200, 201]) | default(false),
+        'applied': (banner_update.response is defined) | default(false),
         'recommendation': 'Configure standard warning banner message for authorized use disclaimer'
       } }) }}"
   when: warning_banner_enabled | bool
@@ -80,7 +64,7 @@
       - "Warning Banner Compliance Check:"
       - "Banner Configured: {{ banner_configured | default(false) }}"
       - "Banner Compliant: {{ banner_compliant | default(false) }}"
-      - "{% if apply_hardening and banner_update is defined %}Banner Applied: {{ banner_update.status in [200, 201] }}{% endif %}"
+      - "{% if apply_hardening and banner_update is defined %}Banner Applied: {{ banner_update.response is defined }}{% endif %}"
       - "{% if not (banner_compliant | default(false)) and not apply_hardening %}RECOMMENDATION: Configure warning banner with required legal disclaimer{% endif %}"
   when: warning_banner_enabled | bool
 

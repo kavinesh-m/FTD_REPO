@@ -3,36 +3,26 @@
 # Session timeout settings per security requirements
 
 - name: Get Current Session Timeout Configuration
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sessiontimeout"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getSessionTimeout
   register: current_session_timeout
   failed_when: false
   when: session_timeout_enabled | bool
 
-  ## BUG: 404
 - name: Debug Current Session Timeout Configuration
   debug:
     var: current_session_timeout
   when: session_timeout_enabled | bool
 
 - name: Get Platform Settings for Timeout Configuration
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/platformsettings"
-    method: GET
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllPlatformSettings
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
   register: platform_settings
   failed_when: false
   when: session_timeout_enabled | bool
 
-  ## BUG: 404
 - name: Debug Platform Settings for Timeout Configuration
   debug:
     var: platform_settings
@@ -40,13 +30,12 @@
 
 - name: Analyze Current Session Timeout Settings
   set_fact:
-    session_timeout_configured: "{{ current_session_timeout.json is defined }}"
-    current_browser_timeout: "{{ current_session_timeout.json.browserTimeout | default(0) }}"
-    current_shell_timeout: "{{ current_session_timeout.json.shellTimeout | default(0) }}"
+    session_timeout_configured: "{{ current_session_timeout.response is defined }}"
+    current_browser_timeout: "{{ current_session_timeout.response.browserTimeout | default(0) }}"
+    current_shell_timeout: "{{ current_session_timeout.response.shellTimeout | default(0) }}"
   when: 
     - session_timeout_enabled | bool
-    - current_session_timeout.status is defined
-    - current_session_timeout.status == 200
+    - current_session_timeout.response is defined
 
 - name: Check Session Timeout Compliance
   set_fact:
@@ -62,27 +51,17 @@
   when: session_timeout_enabled | bool
 
 - name: Configure Session Timeouts (if apply_hardening is enabled)
-  uri:
-    url: "{{ fmc_protocol }}://{{ fmc_host }}/api/fmc_platform/v1/info/sessiontimeout"
-    method: PUT
-    headers:
-      X-auth-access-token: "{{ auth_token }}"
-      Content-Type: "application/json"
-    body_format: json
-    body:
+  cisco.fmcansible.fmc_configuration:
+    operation: updateSessionTimeout
+    data:
       browserTimeout: "{{ browser_session_timeout }}"
       shellTimeout: "{{ shell_timeout }}"
       type: "SessionTimeout"
-    validate_certs: "{{ validate_certs }}"
-    timeout: "{{ api_timeout }}"
-    status_code: [200, 201]
   register: session_timeout_update
   when: 
     - session_timeout_enabled | bool
     - apply_hardening | bool
     - not (session_timeout_compliant | default(false))
-  retries: "{{ api_retries }}"
-  delay: "{{ api_delay }}"
 
 - name: Debug Session Timeout Update Response
   debug:
@@ -98,7 +77,7 @@
     - session_timeout_enabled | bool
     - apply_hardening | bool
     - session_timeout_update is defined
-    - session_timeout_update.status in [200, 201]
+    - session_timeout_update.response is defined
 
 - name: Record Session Timeout Compliance Status
   set_fact:
@@ -112,7 +91,7 @@
         'browser_compliant': browser_timeout_compliant | default(false),
         'shell_compliant': shell_timeout_compliant | default(false),
         'compliant': session_timeout_compliant | default(false),
-        'applied': (session_timeout_update.status is defined and session_timeout_update.status in [200, 201]) | default(false),
+        'applied': (session_timeout_update.response is defined) | default(false),
         'recommendation': 'Configure browser and shell session timeouts to 15 minutes'
       } }) }}"
   when: session_timeout_enabled | bool
@@ -124,7 +103,7 @@
       - "Browser Timeout - Current: {{ current_browser_timeout | default('unknown') }} min, Required: {{ browser_session_timeout }} min, Compliant: {{ browser_timeout_compliant | default(false) }}"
       - "Shell Timeout - Current: {{ current_shell_timeout | default('unknown') }} min, Required: {{ shell_timeout }} min, Compliant: {{ shell_timeout_compliant | default(false) }}"
       - "Overall Compliant: {{ session_timeout_compliant | default(false) }}"
-      - "{% if apply_hardening and session_timeout_update is defined %}Session Timeouts Applied: {{ session_timeout_update.status in [200, 201] }}{% endif %}"
+      - "{% if apply_hardening and session_timeout_update is defined %}Session Timeouts Applied: {{ session_timeout_update.response is defined }}{% endif %}"
   when: session_timeout_enabled | bool
 
 - name: Manual Configuration Instructions for Session Timeout
