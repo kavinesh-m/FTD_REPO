@@ -1,0 +1,11 @@
+{
+    "deleted_rules_details": [],
+    "disabled_rules_details": [],
+    "expired_rules_details": [],
+    "expired_rules_found": "0",
+    "fmc_host": "fmcrestapisandbox.cisco.com",
+    "rules_deleted": "0",
+    "rules_disabled": "0",
+    "timestamp": "20250619190632",
+    "total_rules_checked": "27"
+}

@@ -83,21 +83,10 @@
   delegate_to: localhost
   when: compliance_report_enabled | bool
 
-# - name: Generate HTML Compliance Report
-#   template:
-#     src: compliance_report.html.j2
-#     dest: "{{ config_output_dir }}/fmc_compliance_report_{{ timestamp }}.html"
-#     mode: '0644'
-#   delegate_to: localhost
-#   when: 
-#     - compliance_report_enabled | bool
-#     - generate_html_reports | bool
-#   ignore_errors: true
-
 - name: Log Compliance Summary
   lineinfile:
     path: "{{ log_output_dir }}/compliance_audit.log"
-    line: "{{ timestamp }} - FMC {{ fmc_host }} - Compliance: {{ compliance_percentage }}% ({{ passed_checks }}/{{ total_checks }}) - Status: {{ overall_status }} - Critical Failures: {{ critical_failures | length }}"
+    line: "{{ timestamp }} - FMC {{ fmc_host }} - Compliance: {{ compliance_percentage }}% ({{ passed_checks }}/{{ total_checks }}) - Status: {{ overall_status }} - Critical Failures: {{ (critical_failures | default([])) | length }}"
     create: yes
     mode: '0644'
   delegate_to: localhost
@@ -115,14 +104,13 @@
       - "Passed Checks: {{ passed_checks }}"
       - "Failed Checks: {{ failed_checks }}"
       - ""
-      - "{% if critical_failures | length > 0 %}CRITICAL FAILURES: {{ critical_failures | join(', ') }}{% endif %}"
+      - "{% if (critical_failures | default([])) | length > 0 %}CRITICAL FAILURES: {{ (critical_failures | default([])) | join(', ') }}{% endif %}"
       - ""
       - "DETAILED RESULTS:"
       - "{% for check in compliance_checks | default([]) %}{{ check.key }}: {{ 'PASS' if check.value.compliant else 'FAIL' }}{% endfor %}"
       - ""
       - "Report Files:"
       - "- JSON: {{ config_output_dir }}/fmc_compliance_report_{{ timestamp }}.json"
-      # - "{% if generate_html_reports %}- HTML: {{ config_output_dir }}/fmc_compliance_report_{{ timestamp }}.html{% endif %}"
 
 - name: Display Recommendations
   debug:

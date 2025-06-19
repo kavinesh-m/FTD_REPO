@@ -13,14 +13,41 @@
   debug:
     var: server_version_info
 
+- name: Get All Domain Information
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllDomain
+  register: domains_result
+  failed_when: false
+  when: health_monitoring_enabled | bool
+
+- name: Set domain objectId
+  set_fact:
+    domain_object_id: "{{ item.uuid }}"
+  loop: "{{ domains_result.response['items'] | default([]) }}"
+  when: 
+    - health_monitoring_enabled | bool
+    - item.name == (desired_domain_name | default('Global'))
+
+- name: Set default domain objectId if not found
+  set_fact:
+    domain_object_id: "{{ domains_result.response['items'][0].uuid if domains_result.response is defined and domains_result.response['items'] is defined and domains_result.response['items'] | length > 0 else 'default' }}"
+  when: 
+    - health_monitoring_enabled | bool
+    - domain_object_id is not defined
+
+### BUG: If no domain found, set to 'default'
 - name: Get Domain Information
   cisco.fmcansible.fmc_configuration:
     operation: getDomain
     path_params:
-      domainUUID: "{{ domain_uuid }}"
+      objectId: "{{ domain_object_id }}"
+      domainUUID: "{{ domain_object_id }}"
   register: domain_info
   failed_when: false
-  when: health_monitoring_enabled | bool
+  when: 
+    - health_monitoring_enabled | bool
+    - domain_object_id is defined
+    - domain_object_id != 'default'
 
 - name: Debug Domain Information
   debug:

@@ -16,7 +16,7 @@
 
 - name: Extract Current Hostname
   set_fact:
-    current_hostname: "{{ current_system_info.response.items[0].hostname | default('Unknown') }}"
+    current_hostname: "{{ current_system_info.response['items'][0].hostname | default('Unknown') }}"
   when: 
     - hostname_format_validation | bool
     - current_system_info.response is defined

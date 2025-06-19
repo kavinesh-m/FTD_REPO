@@ -90,9 +90,9 @@
 - name: Set connection test results
   set_fact:
     fmc_connection_test_passed: "{{ server_version_test.response is defined and domain_test.response is defined }}"
-    fmc_server_version: "{{ server_version_test.response.items[0].serverVersion | default('Unknown') }}"
-    fmc_domain_uuid: "{{ domain_test.response.items[0].uuid | default('') }}"
-    fmc_domain_name: "{{ domain_test.response.items[0].name | default('') }}"
+    fmc_server_version: "{{ server_version_test.response['items'][0].serverVersion | default('Unknown') }}"
+    fmc_domain_uuid: "{{ domain_test.response['items'][0].uuid | default('') }}"
+    fmc_domain_name: "{{ domain_test.response['items'][0].name | default('') }}"
 
 - name: Fail if critical tests failed
   fail:
