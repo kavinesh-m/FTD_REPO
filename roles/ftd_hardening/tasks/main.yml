@@ -1,0 +1,686 @@
+---
+# FTD Security Hardening Tasks - Security Hardening Benchmark Implementation
+
+# ================================
+# VARIABLE VALIDATION FRAMEWORK
+# ================================
+
+# Required Variables Validation
+- name: "VALIDATION: Check required FTD hardening variables"
+  assert:
+    that:
+      - ftd_hardening_enabled is defined
+      - ftd_hardening_enabled is boolean
+      - ftd_hardening_dry_run is defined
+      - ftd_hardening_dry_run is boolean
+      - ftd_platform_settings is defined
+      - ftd_platform_settings.policy_name is defined
+      - ftd_platform_settings.policy_name | length > 0
+      - ftd_ssh_access_control is defined
+      - ftd_ssh_access_control.enabled is defined
+      - ftd_ssh_access_control.enabled is boolean
+      - ftd_session_timeout is defined
+      - ftd_session_timeout.enabled is defined
+      - ftd_session_timeout.enabled is boolean
+      - ftd_hostname_config is defined
+      - ftd_hostname_config.enabled is defined
+      - ftd_hostname_config.enabled is boolean
+      - ftd_verification is defined
+      - ftd_verification.enabled is defined
+      - ftd_verification.enabled is boolean
+    fail_msg: |
+      ❌ VALIDATION FAILED: Required FTD hardening variables are missing or invalid!
+
+      ⚠️  REQUIRED VARIABLES:
+      • ftd_hardening_enabled (boolean): Enable/disable hardening role
+      • ftd_hardening_dry_run (boolean): Run in dry-run mode without making changes
+      • ftd_platform_settings.policy_name (string): Platform settings policy name
+      • ftd_ssh_access_control.enabled (boolean): Enable SSH access control
+      • ftd_session_timeout.enabled (boolean): Enable session timeout configuration
+      • ftd_hostname_config.enabled (boolean): Enable hostname configuration
+      • ftd_verification.enabled (boolean): Enable verification checks
+
+      📝 HOW TO FIX:
+      1. Add required variables to your inventory or group_vars
+      2. Check roles/ftd_hardening/defaults/main.yml for examples
+      3. Ensure all boolean values are true/false (not strings)
+      4. Verify platform policy name is not empty
+
+      📖 DOCUMENTATION: See README.md for FTD hardening configuration
+    success_msg: "✅ All required FTD hardening variables are properly configured"
+
+# SSH Access Control Validation
+- name: "VALIDATION: Check SSH access control configuration"
+  assert:
+    that:
+      - ftd_ssh_access_control.allowed_networks is defined
+      - ftd_ssh_access_control.allowed_networks is iterable
+      - ftd_ssh_access_control.allowed_networks | length > 0
+    fail_msg: |
+      ❌ VALIDATION FAILED: SSH access control configuration is invalid!
+
+      ⚠️  REQUIRED SSH ACCESS CONTROL:
+      • ftd_ssh_access_control.allowed_networks must be defined as a list
+      • At least one allowed network must be configured
+
+      📝 EXAMPLE CONFIGURATION:
+      ftd_ssh_access_control:
+        enabled: true
+        allowed_networks:
+          - network: "192.168.1.0"
+            mask: "255.255.255.0"
+            description: "Management Network"
+
+      📖 DOCUMENTATION: See roles/ftd_hardening/defaults/main.yml for examples
+    success_msg: "✅ SSH access control configuration is valid"
+  when: ftd_ssh_access_control.enabled | default(true)
+
+# SSH Network Configuration Validation
+- name: "VALIDATION: Check SSH network entries"
+  assert:
+    that:
+      - item.network is defined
+      - item.network | length > 0
+      - item.mask is defined
+      - item.mask | length > 0
+    fail_msg: |
+      ❌ VALIDATION FAILED: SSH network entry is invalid!
+
+      ⚠️  INVALID NETWORK: {{ item | default('undefined') }}
+
+      ⚠️  REQUIRED FIELDS:
+      • network: IP address or network (e.g., "192.168.1.0")
+      • mask: Subnet mask (e.g., "255.255.255.0")
+      • description: Network description (optional)
+
+      📝 EXAMPLE:
+      - network: "192.168.1.0"
+        mask: "255.255.255.0"
+        description: "Management Network"
+
+      📖 DOCUMENTATION: See roles/ftd_hardening/defaults/main.yml
+    success_msg: "✅ SSH network entry {{ item.network }} is valid"
+  loop: "{{ ftd_ssh_access_control.allowed_networks }}"
+  when:
+    - ftd_ssh_access_control.enabled | default(true)
+    - ftd_ssh_access_control.allowed_networks is defined
+
+# Session Timeout Configuration Validation
+- name: "VALIDATION: Check session timeout configuration"
+  assert:
+    that:
+      - ftd_session_timeout.browser_timeout_minutes is defined
+      - ftd_session_timeout.browser_timeout_minutes is number
+      - ftd_session_timeout.browser_timeout_minutes > 0
+      - ftd_session_timeout.browser_timeout_minutes <= 1440
+      - ftd_session_timeout.shell_timeout_minutes is defined
+      - ftd_session_timeout.shell_timeout_minutes is number
+      - ftd_session_timeout.shell_timeout_minutes > 0
+      - ftd_session_timeout.shell_timeout_minutes <= 1440
+    fail_msg: |
+      ❌ VALIDATION FAILED: Session timeout configuration is invalid!
+
+      ⚠️  TIMEOUT CONFIGURATION:
+      • browser_timeout_minutes: {{ ftd_session_timeout.browser_timeout_minutes | default('undefined') }}
+      • shell_timeout_minutes: {{ ftd_session_timeout.shell_timeout_minutes | default('undefined') }}
+
+      ⚠️  REQUIREMENTS:
+      • Both timeouts must be numbers between 1 and 1440 (24 hours)
+      • Recommended values: 15-60 minutes for security
+
+      📝 EXAMPLE:
+      ftd_session_timeout:
+        enabled: true
+        browser_timeout_minutes: 15
+        shell_timeout_minutes: 15
+
+      📖 DOCUMENTATION: See roles/ftd_hardening/defaults/main.yml
+    success_msg: "✅ Session timeout configuration is valid"
+  when: ftd_session_timeout.enabled | default(true)
+
+# Optional Variables Validation
+- name: "VALIDATION: Check optional FTD hardening variables"
+  assert:
+    that:
+      - ftd_hardening_json_output is boolean
+    fail_msg: |
+      ❌ VALIDATION FAILED: Optional variable has invalid type!
+
+      ⚠️  TYPE ERROR:
+      • ftd_hardening_json_output must be boolean (true/false)
+      • Current value: {{ ftd_hardening_json_output }} ({{ ftd_hardening_json_output | type_debug }})
+
+      📝 HOW TO FIX: Set ftd_hardening_json_output: true or false
+    success_msg: "✅ Optional FTD hardening variables are valid"
+  when: ftd_hardening_json_output is defined
+
+- name: debug ftd_hardening_json_output
+  debug:
+    msg: "ftd_hardening_json_output is set to {{ ftd_hardening_json_output }}"
+  when: ftd_hardening_json_output is defined
+
+# API Timeout Validation
+- name: "VALIDATION: Check API timeout configuration"
+  assert:
+    that:
+      - api_timeout is number
+      - api_timeout >= 10
+      - api_timeout <= 300
+    fail_msg: |
+      ❌ VALIDATION FAILED: API timeout is invalid!
+
+      ⚠️  CURRENT VALUE: {{ api_timeout }} ({{ api_timeout | type_debug }})
+      ⚠️  REQUIREMENT: Must be a number between 10 and 300 seconds
+
+      📝 RECOMMENDED: 30-60 seconds for FTD operations
+      📝 HOW TO FIX: Set api_timeout: 30
+    success_msg: "✅ API timeout configuration is valid ({{ api_timeout }}s)"
+  when: api_timeout is defined
+
+# Report Output Directory Validation
+- name: "VALIDATION: Check report output directory"
+  assert:
+    that:
+      - report_output_dir | length > 0
+      - not (report_output_dir | regex_search('^\s*$'))
+    fail_msg: |
+      ❌ VALIDATION FAILED: Report output directory is invalid!
+
+      ⚠️  CURRENT VALUE: "{{ report_output_dir }}"
+      ⚠️  REQUIREMENT: Must be a non-empty directory path
+
+      📝 EXAMPLES: "./reports", "/tmp/ftd_reports", "./output"
+      📝 HOW TO FIX: Set report_output_dir: "./reports"
+    success_msg: "✅ Report output directory is valid: {{ report_output_dir }}"
+  when: report_output_dir is defined
+
+# FTD Device Dependencies Validation
+- name: "VALIDATION: Check FTD device dependencies"
+  assert:
+    that:
+      - ftd_devices_found is defined
+      - ftd_devices_found is boolean
+      - ftd_connected_device_list is defined
+      - ftd_connected_device_list is iterable
+    fail_msg: |
+      ❌ VALIDATION FAILED: FTD device dependencies not available!
+
+      ⚠️  MISSING DEPENDENCIES:
+      • ftd_devices_found: {{ ftd_devices_found | default('undefined') }}
+      • ftd_connected_device_list: {{ ftd_connected_device_list | default('undefined') }}
+
+      🔧 PREREQUISITES:
+      1. Run 'ftd_discovery' role first to discover FTD devices
+      2. Ensure FTD devices are connected and accessible
+      3. Verify FMC can communicate with target FTD devices
+
+      📝 COMMAND EXAMPLE:
+      ansible-playbook -i inventory.ini main.yml --tags "discovery,ftd"
+
+      📖 DOCUMENTATION: See README.md for role dependencies
+    success_msg: "✅ FTD device dependencies are satisfied"
+  when: ftd_hardening_enabled | default(true)
+
+# Display Validation Summary
+- name: "VALIDATION: FTD hardening validation summary"
+  debug:
+    msg:
+      - "=========================================="
+      - "  FTD HARDENING VALIDATION COMPLETED"
+      - "=========================================="
+      - "✅ All required variables validated"
+      - "✅ SSH access control: {{ 'ENABLED' if ftd_ssh_access_control.enabled else 'DISABLED' }}"
+      - "   └── Allowed networks: {{ ftd_ssh_access_control.allowed_networks | length if ftd_ssh_access_control.enabled else 'N/A' }}"
+      - "✅ Session timeouts: {{ 'ENABLED' if ftd_session_timeout.enabled else 'DISABLED' }}"
+      - "   └── Browser: {{ ftd_session_timeout.browser_timeout_minutes if ftd_session_timeout.enabled else 'N/A' }}min, Shell: {{ ftd_session_timeout.shell_timeout_minutes if ftd_session_timeout.enabled else 'N/A' }}min"
+      - "✅ Hostname config: {{ 'ENABLED' if ftd_hostname_config.enabled else 'DISABLED' }}"
+      - "✅ Verification: {{ 'ENABLED' if ftd_verification.enabled else 'DISABLED' }}"
+      - "✅ Dry run mode: {{ ftd_hardening_dry_run }}"
+      - "✅ Target devices: {{ ftd_connected_device_list | length if ftd_connected_device_list is defined else 0 }}"
+      - "=========================================="
+
+# ================================
+# DEPENDENCY VERIFICATION
+# ================================
+- name: Verify dependencies are met
+  fail:
+    msg: "Required dependencies not met. FMC connection and FTD discovery must be completed first."
+  when: not (fmc_connection_test_passed | default(false)) or not (ftd_devices_found | default(false))
+
+- name: Display FTD Hardening Start
+  debug:
+    msg:
+      - "=== FTD SECURITY HARDENING BENCHMARK IMPLEMENTATION ==="
+      - "Target FTD Devices: {{ ftd_total_devices }}"
+      - "Connected Devices: {{ ftd_connected_devices }}"
+      - "Hardening Policy: {{ ftd_platform_settings.policy_name }}"
+      - "Dry Run Mode: {{ ftd_hardening_dry_run }}"
+      - "Benchmark Standards: Security Hardening Benchmark"
+
+# ================================
+# AUTHENTICATION AND API SETUP
+# ================================
+- name: Test FMC Authentication
+  uri:
+    url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_platform/v1/auth/generatetoken"
+    method: POST
+    user: "{{ fmc_username }}"
+    password: "{{ fmc_password }}"
+    validate_certs: "{{ validate_certs }}"
+    force_basic_auth: yes
+    timeout: "{{ api_timeout | default(30) }}"
+  register: auth_test
+  failed_when: false
+
+- name: Debug auth_test response
+  debug:
+    msg: "Authentication response: {{ auth_test }}"
+  when: 
+    - auth_test.status == 204
+    - debug_mode | default(false) | bool
+
+
+- name: Test API Access (if authentication successful)
+  uri:
+    url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_platform/v1/info/serverversion"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+    validate_certs: "{{ validate_certs }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  register: api_test
+  when: auth_test.status == 204
+  failed_when: false
+
+- name: Initialize hardening results
+  set_fact:
+    ftd_hardening_results: {}
+
+# ================================
+# 4.3.1 SSH ACCESS CONTROL (CRITICAL SECURITY)
+# ================================
+- name: Configure SSH Access Control for FTD Devices
+  block:
+    - name: Display SSH Access Configuration Start
+      debug:
+        msg:
+          - "=== CONFIGURING SSH ACCESS CONTROL (4.3.1) - CRITICAL ==="
+          - "Allowed Networks Count: {{ ftd_ssh_access_control.allowed_networks | length }}"
+          - "Implementation: Via FMC Operational Commands API"
+
+    - name: Clear existing SSH access list on FTD devices
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "configure terminal"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: ssh_config_start
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_ssh_access_control.enabled
+      failed_when: false
+
+    - name: Clear SSH access list
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "ssh-access-list clear"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: ssh_clear_results
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_ssh_access_control.enabled
+      failed_when: false
+
+    - name: Configure SSH access control networks
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.0.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "ssh-access-list {{ item.1.network }} {{ item.1.mask }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: ssh_access_results
+      loop: "{{ ftd_connected_device_list | product(ftd_ssh_access_control.allowed_networks) | list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_ssh_access_control.enabled
+      failed_when: false
+
+    - name: Exit configuration mode
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "exit"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: ssh_config_end
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_ssh_access_control.enabled
+      failed_when: false
+
+    - name: Set SSH access configuration flag
+      set_fact:
+        ftd_hardening_results: "{{ ftd_hardening_results | combine({'ssh_access_configured': (ssh_access_results.results | selectattr('status', 'equalto', 200) | list | length) > 0}) }}"
+      when: ssh_access_results is defined
+
+  when: ftd_ssh_access_control.enabled | default(true)
+
+# ================================
+# 4.3.2 SESSION TIMEOUT CONFIGURATION
+# ================================
+- name: Configure Session Timeouts
+  block:
+    - name: Display Session Timeout Configuration Start
+      debug:
+        msg:
+          - "=== CONFIGURING SESSION TIMEOUTS (4.3.2) ==="
+          - "Browser Timeout: {{ ftd_session_timeout.browser_timeout_minutes }} minutes"
+          - "Shell Timeout: {{ ftd_session_timeout.shell_timeout_minutes }} minutes"
+
+    - name: Configure session timeouts on FTD devices - Enter config mode
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "configure terminal"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: session_timeout_config_start
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_session_timeout.enabled
+      failed_when: false
+
+    - name: Configure shell timeout
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "timeout {{ ftd_session_timeout.shell_timeout_minutes }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: shell_timeout_results
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_session_timeout.enabled
+      failed_when: false
+
+    - name: Configure HTTP server timeout
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "http server timeout {{ ftd_session_timeout.browser_timeout_minutes }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: http_timeout_results
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_session_timeout.enabled
+      failed_when: false
+
+    - name: Exit configuration mode
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "exit"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: session_timeout_config_end
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_session_timeout.enabled
+      failed_when: false
+
+    - name: Set session timeout configuration flag
+      set_fact:
+        ftd_hardening_results: "{{ ftd_hardening_results | combine({'session_timeout_configured': (shell_timeout_results.results | selectattr('status', 'equalto', 200) | list | length) > 0}) }}"
+      when: shell_timeout_results is defined
+
+  when: ftd_session_timeout.enabled | default(true)
+
+# ================================
+# 4.1.1 HOSTNAME CONFIGURATION
+# ================================
+- name: Configure FTD Hostname
+  block:
+    - name: Display Hostname Configuration Start
+      debug:
+        msg:
+          - "=== CONFIGURING FTD HOSTNAME (4.1.1) ==="
+          - "Naming Convention Enforcement: {{ ftd_hostname_config.enforce_naming_convention }}"
+
+    - name: Configure hostname on FTD devices
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "configure terminal"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: hostname_config_start
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_hostname_config.enabled
+      failed_when: false
+
+    - name: Set hostname
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "hostname {{ item.name }}"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: hostname_results
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_hostname_config.enabled
+      failed_when: false
+
+    - name: Exit configuration mode
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "exit"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: hostname_config_end
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_hostname_config.enabled
+      failed_when: false
+
+    - name: Set hostname configuration flag
+      set_fact:
+        ftd_hardening_results: "{{ ftd_hardening_results | combine({'hostname_configured': (hostname_results.results | selectattr('status', 'equalto', 200) | list | length) > 0}) }}"
+      when: hostname_results is defined
+
+  when: ftd_hostname_config.enabled | default(true)
+
+# ================================
+# VERIFICATION TASKS
+# ================================
+- name: Verify SSH Access Configuration
+  block:
+    - name: Execute SSH Access List Verification Command
+      uri:
+        url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_config/v1/domain/{{ fmc_domain_uuid }}/devices/devicerecords/{{ item.id }}/operational/commands"
+        method: POST
+        headers:
+          X-auth-access-token: "{{ auth_test.x_auth_access_token }}"
+          Content-Type: "application/json"
+        body_format: json
+        body:
+          command: "show ssh-access-list"
+        validate_certs: "{{ validate_certs }}"
+        timeout: "{{ api_timeout | default(30) }}"
+      register: ssh_verification_results
+      loop: "{{ ftd_connected_device_list }}"
+      when: 
+        - not ftd_hardening_dry_run
+        - ftd_verification.ssh_access_verification
+      failed_when: false
+
+    - name: Set verification flag
+      set_fact:
+        ftd_hardening_results: "{{ ftd_hardening_results | combine({'verification_passed': (ssh_verification_results.results | selectattr('status', 'equalto', 200) | list | length) > 0}) }}"
+      when: ssh_verification_results is defined
+
+  when: ftd_verification.enabled | default(true)
+
+# ================================
+# DRY RUN SUMMARY
+# ================================
+- name: Display Dry Run Summary
+  debug:
+    msg:
+      - "=== DRY RUN MODE - NO CHANGES APPLIED ==="
+      - "Would configure SSH access for {{ ftd_ssh_access_control.allowed_networks | length }} networks"
+      - "Would configure session timeouts: Browser {{ ftd_session_timeout.browser_timeout_minutes }}min, Shell {{ ftd_session_timeout.shell_timeout_minutes }}min"
+      - "Would configure hostname for {{ ftd_connected_device_list | length }} devices"
+      - "Implementation: Direct operational commands via FMC API"
+  when: ftd_hardening_dry_run
+
+# ================================
+# COMPLIANCE SUMMARY
+# ================================
+- name: Calculate Benchmark Compliance
+  set_fact:
+    benchmark_compliance_score: "{{ ((ftd_hardening_results.values() | map('bool') | select | list | length) / (ftd_hardening_results | length) * 100) | round(2) if ftd_hardening_results | length > 0 else 0 }}"
+
+- name: FTD Security Hardening Benchmark Summary
+  debug:
+    msg:
+      - "=== FTD SECURITY HARDENING BENCHMARK SUMMARY ==="
+      - "4.1.1 Hostname Configured: {{ ftd_hardening_results.hostname_configured | default(false) }}"
+      - "4.3.1 SSH Access Configured: {{ ftd_hardening_results.ssh_access_configured | default(false) }}"
+      - "4.3.2 Session Timeout Configured: {{ ftd_hardening_results.session_timeout_configured | default(false) }}"
+      - "Verification Passed: {{ ftd_hardening_results.verification_passed | default(false) }}"
+      - "Benchmark Compliance: {{ benchmark_compliance_score }}%"
+      - "Overall Status: {{ 'COMPLIANT' if (benchmark_compliance_score | int) >= 80 else 'NON-COMPLIANT' }}"
+      - "Implementation Method: FMC Operational Commands API"
+
+# ================================
+# REPORTING
+# ================================
+- name: Generate FTD Security Hardening Benchmark Report
+  copy:
+    content: |
+      {
+        "ftd_security_hardening_benchmark_report": {
+          "timestamp": "{{ now().strftime('%Y-%m-%dT%H:%M:%S') }}",
+          "fmc_host": "{{ ansible_host }}",
+          "benchmark_info": {
+            "standard": "Security Hardening Benchmark for Cisco Firepower Devices",
+            "version": "Latest",
+            "implementation_method": "FMC API Operational Commands"
+          },
+          "hardening_summary": {
+            "policy_name": "{{ ftd_platform_settings.policy_name }}",
+            "target_devices": {{ ftd_connected_device_list | length }},
+            "compliance_score": {{ benchmark_compliance_score }},
+            "compliance_status": "{{ 'COMPLIANT' if (benchmark_compliance_score | float) >= 80 else 'NON-COMPLIANT' }}",
+            "dry_run_mode": {{ ftd_hardening_dry_run | to_json }}
+          },
+          "benchmark_controls": {
+            "4.1.1_hostname_configured": {{ ftd_hardening_results.hostname_configured | default(false) | to_json }},
+            "4.3.1_ssh_access_configured": {{ ftd_hardening_results.ssh_access_configured | default(false) | to_json }},
+            "4.3.2_session_timeout_configured": {{ ftd_hardening_results.session_timeout_configured | default(false) | to_json }}
+          },
+          "ssh_access_control": {
+            "enabled": {{ ftd_ssh_access_control.enabled | to_json }},
+            "allowed_networks_count": {{ ftd_ssh_access_control.allowed_networks | length }},
+            "allowed_networks": {{ ftd_ssh_access_control.allowed_networks | to_json }}
+          },
+          "session_timeouts": {
+            "enabled": {{ ftd_session_timeout.enabled | to_json }},
+            "browser_timeout_minutes": {{ ftd_session_timeout.browser_timeout_minutes }},
+            "shell_timeout_minutes": {{ ftd_session_timeout.shell_timeout_minutes }}
+          },
+          "target_devices": {{ ftd_connected_device_list | to_json }},
+          "verification_results": {
+            "verification_enabled": {{ ftd_verification.enabled | to_json }},
+            "verification_passed": {{ ftd_hardening_results.verification_passed | default(false) | to_json }}
+          },
+          "full_hardening_results": {{ ftd_hardening_results | to_json }}
+        }
+      }
+    dest: "{{ report_output_dir | default('./outputs/reports') }}/ftd_security_hardening_benchmark_{{ ansible_host }}_{{ lookup('pipe', 'date +%s') }}.json"
+  delegate_to: localhost
+  # when: ftd_hardening_json_output | default(true) | bool
+
+# # ================================
+# # ERROR HANDLING
+# # ================================
+# - name: Fail if critical hardening failed
+#   fail:
+#     msg: "Critical FTD security hardening benchmark controls failed. SSH access control or core configurations unsuccessful."
+#   when: 
+#     - fail_on_hardening_error | default(true)
+#     - ( benchmark_compliance_score | int ) < 80
+#     - not ftd_hardening_dry_run
+

@@ -1,0 +1,10 @@
+---
+galaxy_info:
+  author: FMC Automation Team
+  description: Role for managing FTD device-level access rules with time-based expiry and policy enforcement
+  license: MIT
+  min_ansible_version: "2.18"
+dependencies: []
+  # - role: fmc_connection
+  # - role: ftd_discovery
+

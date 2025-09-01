@@ -1,0 +1,91 @@
+---
+# FTD Rule Management Handlers
+# Handles deployment and policy management for FTD devices
+
+- name: deploy ftd policy
+  cisco.fmcansible.fmc_configuration:
+    operation: createDeployableDevice
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
+    data:
+      type: "DeployableDevice"
+      device:
+        id: "{{ item }}"
+        type: "Device"
+      forceDeploy: true
+      ignoreWarning: true
+      version: "{{ now().strftime('%s') }}"
+  loop: "{{ ftd_devices_to_deploy | default([]) }}"
+  when: 
+    - ftd_devices_to_deploy is defined
+    - ftd_devices_to_deploy | length > 0
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+
+- name: wait for deployment completion
+  cisco.fmcansible.fmc_configuration:
+    operation: getDeployableDevice
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
+      objectId: "{{ item }}"
+  loop: "{{ ftd_devices_to_deploy | default([]) }}"
+  register: deployment_status
+  until: deployment_status.response.deploymentStatus in ['DEPLOYED', 'FAILED']
+  retries: 30
+  delay: 10
+  when: 
+    - ftd_devices_to_deploy is defined
+    - ftd_devices_to_deploy | length > 0
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+
+- name: notify deployment completion
+  debug:
+    msg: "FTD policy deployment completed for {{ ftd_devices_to_deploy | length }} devices"
+  when: 
+    - ftd_devices_to_deploy is defined
+    - ftd_devices_to_deploy | length > 0
+
+- name: backup rule configuration
+  copy:
+    content: "{{ ftd_rule_backup_data | to_nice_json }}"
+    dest: "{{ backup_settings.backup_location | default(config_output_dir + '/rule_backups') }}/ftd_config_backup_{{ '%s' | strftime }}.json"
+    mode: '0644'
+  delegate_to: localhost
+  when: 
+    - ftd_rule_backup_data is defined
+    - backup_settings.enabled | default(true) | bool
+
+- name: send notification
+  debug:
+    msg: "Sending notification about FTD rule management completion"
+  when: 
+    - notifications.notify_on_completion | default(true) | bool
+    - (notifications.email_enabled | default(false) | bool or 
+       notifications.slack_enabled | default(false) | bool or 
+       notifications.webhook_enabled | default(false) | bool)
+
+- name: validate rule deployment
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllAccessRule
+    path_params:
+      domainUUID: "{{ domain_uuid }}"
+      containerUUID: "{{ item.policy_id }}"
+    query_params:
+      deviceUUID: "{{ item.device_id }}"
+  loop: "{{ ftd_validation_targets | default([]) }}"
+  register: post_deployment_validation
+  when: 
+    - ftd_validation_targets is defined
+    - deployment.validate_before_deploy | default(true) | bool
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+
+- name: log deployment results
+  lineinfile:
+    path: "{{ log_output_dir }}/ftd_deployment.log"
+    line: "{{ '%Y-%m-%d %H:%M:%S' | strftime }} - FTD Deployment - Devices: {{ ftd_devices_to_deploy | length }}, Status: {{ 'SUCCESS' if deployment_status.response.deploymentStatus == 'DEPLOYED' else 'FAILED' }}"
+    create: yes
+    mode: '0644'
+  delegate_to: localhost
+  when: 
+    - logging.log_all_operations | default(true) | bool
+    - ftd_devices_to_deploy is defined
+

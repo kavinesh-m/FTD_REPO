@@ -132,3 +132,6 @@ templates
 cron_examples.txt
 TROUBLESHOOTING.md
 LICENSE
+
+headers.txt
+test-connection.sh

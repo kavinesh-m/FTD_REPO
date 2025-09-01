@@ -10,6 +10,10 @@ trace_output_dir: "../../outputs/packet_traces"
 report_output_dir: "../../outputs/reports"
 log_output_dir: "../../outputs/logs"
 
+# JSON Report Settings
+fmc_json_output: true
+ftd_json_output: true
+
 # Rule Management Settings
 rule_expiry_check_enabled: true
 rule_auto_disable: true
@@ -33,3 +37,32 @@ log_rotation: true
 max_log_files: 10
 
 debug_mode: true
+
+# FTD Device Settings
+discover_ftd_devices: true
+ftd_health_check_enabled: true
+ftd_connectivity_timeout: 30
+ftd_deployment_check: true
+ftd_license_check: true
+
+# FTD Device Status Flags (set by connection test)
+ftd_devices_found: false
+ftd_total_devices: 0
+ftd_connected_devices: 0
+ftd_disconnected_devices: 0
+ftd_query_failed_devices: 0
+
+# FTD Device Health Status
+ftd_healthy_status_patterns:
+  - "NORMAL"
+  - "GREEN"
+
+# FTD Device Management
+ftd_device_inventory: []
+ftd_connected_device_list: []
+ftd_disconnected_device_list: []
+
+# FTD Operations Settings
+ftd_bulk_operations_enabled: false
+ftd_parallel_operations: false
+ftd_max_concurrent_operations: 3

@@ -1,5 +1,42 @@
 ---
-# FMC Connection Test Tasks using cisco.fmcansible collection
+# Pure FMC Connection Test Tasks using cisco.fmcansible collection
+
+- name: Validate FMC connection prerequisites
+  assert:
+    that:
+      - ansible_host is defined
+      - ansible_host != ""
+      - fmc_username is defined
+      - fmc_username != ""
+      - fmc_password is defined
+      - fmc_password != ""
+      - fmc_timeout | default(30) | int >= 10 and fmc_timeout | default(30) | int <= 300
+      - max_retries | default(3) | int >= 0 and max_retries | default(3) | int <= 10
+    fail_msg: |
+      FMC connection prerequisites validation failed:
+      - ansible_host: {{ ansible_host | default('UNDEFINED') }}
+      - fmc_username: {{ fmc_username | default('UNDEFINED') }}
+      - fmc_password: {{ 'DEFINED' if fmc_password is defined and fmc_password != '' else 'UNDEFINED' }}
+      - fmc_timeout: {{ fmc_timeout | default(30) }} (must be 10-300 seconds)
+      - max_retries: {{ max_retries | default(3) }} (must be 0-10)
+    success_msg: "FMC connection prerequisites validated successfully"
+
+- name: Validate connection test configuration
+  assert:
+    that:
+      - fail_on_connection_error | default(true) | type_debug == "bool"
+      - fmc_json_output | default(false) | type_debug == "bool"
+      - debug_mode | default(false) | type_debug == "bool"
+    fail_msg: |
+      Connection test configuration validation failed:
+      - fail_on_connection_error: {{ fail_on_connection_error | default(true) }} (must be boolean)
+      - fmc_json_output: {{ fmc_json_output | default(false) }} (must be boolean)
+      - debug_mode: {{ debug_mode | default(false) }} (must be boolean)
+    success_msg: "Connection test configuration validated successfully"
+
+- name: Capture start time for server version test
+  set_fact:
+    server_version_start_time: "{{ lookup('pipe', 'date +%s%3N') }}"
 
 - name: Test FMC Connection and Get Server Version
   cisco.fmcansible.fmc_configuration:
@@ -7,7 +44,15 @@
   register: server_version_test
   failed_when: false
 
-- name: Degug Server Version Test
+- name: Calculate server version test elapsed time
+  set_fact:
+    server_version_end_time: "{{ lookup('pipe', 'date +%s%3N') }}"
+
+- name: Set server version elapsed time with minimum threshold
+  set_fact:
+    server_version_elapsed_ms: "{{ [((server_version_end_time | int) - (server_version_start_time | int)), 1] | max }}"
+
+- name: Debug Server Version Test
   debug:
     var: server_version_test
   when: debug_mode | default(false) | bool
@@ -32,11 +77,23 @@
       - "Error: {{ server_version_test.msg | default('Connection test failed') }}"
   when: server_version_test.response is not defined
 
+- name: Capture start time for domain test
+  set_fact:
+    domain_test_start_time: "{{ lookup('pipe', 'date +%s%3N') }}"
+
 - name: Test Domain Access
   cisco.fmcansible.fmc_configuration:
     operation: getAllDomain
   register: domain_test
   failed_when: false
+
+- name: Calculate domain test elapsed time
+  set_fact:
+    domain_test_end_time: "{{ lookup('pipe', 'date +%s%3N') }}"
+
+- name: Set domain test elapsed time with minimum threshold
+  set_fact:
+    domain_test_elapsed_ms: "{{ [((domain_test_end_time | int) - (domain_test_start_time | int)), 1] | max }}"
 
 - name: Debug Domain Test
   debug:
@@ -58,6 +115,11 @@
   loop: "{{ domain_test.response['items'] | default([]) }}"
   when: domain_test.response is defined
 
+- name: Capture start time for access policy test
+  set_fact:
+    access_policy_start_time: "{{ lookup('pipe', 'date +%s%3N') }}"
+  when: domain_test.response is defined and domain_test.response['items'] | length > 0
+
 - name: Test Access Policy Access (if domain test successful)
   cisco.fmcansible.fmc_configuration:
     operation: getAllAccessPolicy
@@ -66,6 +128,23 @@
   register: access_policy_test
   when: domain_test.response is defined and domain_test.response['items'] | length > 0
   failed_when: false
+
+- name: Calculate access policy test elapsed time
+  set_fact:
+    access_policy_end_time: "{{ lookup('pipe', 'date +%s%3N') }}"
+  when:
+    - domain_test.response is defined
+    - domain_test.response['items'] | length > 0
+    - access_policy_start_time is defined
+
+- name: Set access policy elapsed time with minimum threshold
+  set_fact:
+    access_policy_elapsed_ms: "{{ [((access_policy_end_time | int) - (access_policy_start_time | int)), 1] | max }}"
+  when:
+    - domain_test.response is defined
+    - domain_test.response['items'] | length > 0
+    - access_policy_start_time is defined
+    - access_policy_end_time is defined
 
 - name: Display Access Policy Test Results
   debug:
@@ -77,26 +156,218 @@
     - domain_test.response is defined
     - access_policy_test is defined
 
-- name: Overall Test Summary
+- name: FMC Connection Test Summary
   debug:
     msg:
       - "=== FMC CONNECTION TEST SUMMARY ==="
       - "FMC Host: {{ ansible_host }}"
-      - "Server Version: {{ 'PASS' if server_version_test.response is defined else 'FAIL' }}"
-      - "Domain Access: {{ 'PASS' if domain_test.response is defined else 'FAIL' }}"
-      - "Access Policy Access: {{ 'PASS' if access_policy_test.response is defined else 'FAIL' if domain_test.response is defined else 'SKIPPED' }}"
+      - "Server Version: {{ 'PASS' if server_version_test.response is defined else 'FAIL' }} ({{ server_version_elapsed_ms | default(0) }}ms)"
+      - "Domain Access: {{ 'PASS' if domain_test.response is defined else 'FAIL' }} ({{ domain_test_elapsed_ms | default(0) }}ms)"
+      - "Access Policy Access: {{ 'PASS' if access_policy_test.response is defined else 'FAIL' if domain_test.response is defined else 'SKIPPED' }} ({{ access_policy_elapsed_ms | default(0) }}ms)"
+      - "Total Response Time: {{ (server_version_elapsed_ms | default(0) | int + domain_test_elapsed_ms | default(0) | int + access_policy_elapsed_ms | default(0) | int) }}ms"
       - "Overall Status: {{ 'READY FOR AUTOMATION' if (server_version_test.response is defined and domain_test.response is defined) else 'NEEDS ATTENTION' }}"
 
-- name: Set connection test results
+- name: Set FMC connection test results
   set_fact:
     fmc_connection_test_passed: "{{ server_version_test.response is defined and domain_test.response is defined }}"
     fmc_server_version: "{{ server_version_test.response['items'][0].serverVersion | default('Unknown') }}"
+    fmc_server_model: "{{ server_version_test.response['items'][0].model | default('Unknown') }}"
+    fmc_server_hostname: "{{ server_version_test.response['items'][0].hostname | default('Unknown') }}"
+    fmc_server_uptime: "{{ server_version_test.response['items'][0].uptime | default('Unknown') }}"
     fmc_domain_uuid: "{{ domain_test.response['items'][0].uuid | default('') }}"
     fmc_domain_name: "{{ domain_test.response['items'][0].name | default('') }}"
+    fmc_domains_available: "{{ domain_test.response['items'] | default([]) if domain_test.response is defined else [] }}"
+    fmc_access_policies_test_passed: "{{ access_policy_test.response is defined }}"
 
-- name: Fail if critical tests failed
+- name: Generate FMC Connection JSON Report
+  copy:
+    content: |
+      {
+        "fmc_connection_report": {
+          "report_metadata": {
+            "report_version": "2.0",
+            "generated_timestamp": "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}",
+            "generated_by": "FMC Ansible Connection Test v2.0",
+            "target_fmc": "{{ ansible_host }}",
+            "assessment_type": "Connection and Basic Security Assessment",
+            "report_id": "fmc_conn_{{ ansible_host | replace('.', '_') }}_{{ lookup('pipe', 'date +%s') }}",
+            "ansible_user": "{{ ansible_user | default('automated') }}",
+            "execution_environment": {
+              "ansible_version": "{{ ansible_version.full | default('Unknown') }}",
+              "python_version": "{{ ansible_python_version | default('Unknown') }}",
+              "fmc_collection_version": "cisco.fmcansible"
+            }
+          },
+          "executive_summary": {
+            "overall_status": "{{ 'READY FOR AUTOMATION' if (server_version_test.response is defined and domain_test.response is defined) else 'NEEDS ATTENTION' }}",
+            "security_posture": "{{ 'BASELINE_ESTABLISHED' if (server_version_test.response is defined and domain_test.response is defined) else 'ASSESSMENT_INCOMPLETE' }}",
+            "connectivity_status": "{{ 'OPERATIONAL' if server_version_test.response is defined else 'IMPAIRED' }}",
+            "api_accessibility": "{{ 'FULL_ACCESS' if (server_version_test.response is defined and domain_test.response is defined and access_policy_test.response is defined) else 'LIMITED_ACCESS' if (server_version_test.response is defined and domain_test.response is defined) else 'NO_ACCESS' }}",
+            "readiness_score": "{{ (((server_version_test.response is defined) | int + (domain_test.response is defined) | int + (access_policy_test.response is defined) | int) * 33.33) | round(1) }}%",
+            "critical_issues": {{ (server_version_test.response is not defined) | int + (domain_test.response is not defined) | int }},
+            "recommendations_count": {{ ((server_version_test.response is not defined) | int + (domain_test.response is not defined) | int + (access_policy_test.response is not defined and domain_test.response is defined) | int) }}
+          },
+          "test_results": {
+            "connection_tests": {
+              "server_version_test": {
+                "status": "{{ 'PASS' if server_version_test.response is defined else 'FAIL' }}",
+                "test_description": "FMC Server Version and Basic Connectivity Test",
+                "api_endpoint": "/api/fmc_config/v1/domain/{domainUUID}/info/serverversion",
+                "response_time_ms": "{{ server_version_elapsed_ms | default(0) | int }}",
+                "error_message": "{{ server_version_test.msg | default('None') }}",
+                "security_implications": "{{ 'Connection established - Authentication successful' if server_version_test.response is defined else 'Critical - Cannot establish secure connection to FMC' }}"
+              },
+              "domain_access_test": {
+                "status": "{{ 'PASS' if domain_test.response is defined else 'FAIL' }}",
+                "test_description": "FMC Domain Access and Authorization Test",
+                "api_endpoint": "/api/fmc_config/v1/domain",
+                "response_time_ms": "{{ domain_test_elapsed_ms | default(0) | int }}",
+                "error_message": "{{ domain_test.msg | default('None') }}",
+                "security_implications": "{{ 'Domain access verified - User has proper RBAC permissions' if domain_test.response is defined else 'Warning - Domain access restricted or authentication insufficient' }}"
+              },
+              "access_policy_test": {
+                "status": "{{ 'PASS' if access_policy_test.response is defined else 'FAIL' if domain_test.response is defined else 'SKIPPED' }}",
+                "test_description": "FMC Access Control Policy Discovery Test",
+                "api_endpoint": "/api/fmc_config/v1/domain/{domainUUID}/policy/accesspolicies",
+                "response_time_ms": "{{ access_policy_elapsed_ms | default(0) | int if access_policy_elapsed_ms is defined else 0 }}",
+                "error_message": "{{ access_policy_test.msg | default('Test skipped - Domain access failed') if access_policy_test is defined else 'Test skipped - Domain access failed' }}",
+                "security_implications": "{{ 'Policy access confirmed - Full security configuration assessment possible' if access_policy_test.response is defined else 'Limited - Policy assessment capabilities restricted' if domain_test.response is defined else 'No assessment possible' }}"
+              }
+            },
+            "performance_metrics": {
+              "total_test_duration_ms": "{{ (server_version_elapsed_ms | default(0) | int + domain_test_elapsed_ms | default(0) | int + access_policy_elapsed_ms | default(0) | int) }}",
+              "api_response_times": {
+                "server_version_avg_ms": "{{ server_version_elapsed_ms | default(0) | int }}",
+                "domain_access_avg_ms": "{{ domain_test_elapsed_ms | default(0) | int }}",
+                "policy_access_avg_ms": "{{ access_policy_elapsed_ms | default(0) | int }}"
+              },
+              "connection_quality": "{{ 'EXCELLENT' if ((server_version_elapsed_ms | default(10000) | int + domain_test_elapsed_ms | default(10000) | int) / 1000) < 2 else 'GOOD' if ((server_version_elapsed_ms | default(10000) | int + domain_test_elapsed_ms | default(10000) | int) / 1000) < 5 else 'POOR' }}"
+            }
+          },
+          "fmc_system_information": {
+            "server_details": {
+              "fmc_version": "{{ fmc_server_version }}",
+              "server_model": "{{ fmc_server_model }}",
+              "hostname": "{{ fmc_server_hostname }}",
+              "uptime": "{{ fmc_server_uptime }}",
+              "management_ip": "{{ ansible_host }}",
+              "api_version": "{{ server_version_test.response['items'][0].apiVersion | default('Unknown') if server_version_test.response is defined else 'Unknown' }}",
+              "build_number": "{{ server_version_test.response['items'][0].buildNumber | default('Unknown') if server_version_test.response is defined else 'Unknown' }}",
+              "product": "{{ server_version_test.response['items'][0].product | default('Unknown') if server_version_test.response is defined else 'Unknown' }}"
+            },
+            "version_analysis": {
+              "version_supported": "{{ 'Yes' if fmc_server_version is version('6.6.0', '>=') else 'Unknown' if fmc_server_version == 'Unknown' else 'Outdated' }}",
+              "security_status": "{{ 'Current' if fmc_server_version is version('7.0.0', '>=') else 'Legacy' if fmc_server_version is version('6.6.0', '>=') else 'End of Life Risk' if fmc_server_version != 'Unknown' else 'Unknown' }}",
+              "recommended_action": "{{ 'No action required' if fmc_server_version is version('7.2.0', '>=') else 'Consider upgrade planning' if fmc_server_version is version('6.6.0', '>=') else 'Immediate upgrade recommended' if fmc_server_version != 'Unknown' else 'Version assessment required' }}"
+            },
+            "management_access": {
+              "authentication_method": "Local User Database",
+              "session_timeout_configured": "{{ fmc_timeout | default(30) }} seconds",
+              "max_retry_attempts": "{{ max_retries | default(3) }}",
+              "connection_security": "HTTPS/TLS",
+              "api_access_level": "{{ 'Full Configuration Access' if access_policy_test.response is defined else 'Limited Read Access' if domain_test.response is defined else 'Connection Only' }}"
+            }
+          },
+          "domain_configuration": {
+            "primary_domain": {
+              "uuid": "{{ fmc_domain_uuid }}",
+              "name": "{{ fmc_domain_name }}",
+              "access_status": "{{ 'Accessible' if domain_test.response is defined else 'Inaccessible' }}"
+            },
+            "all_domains": {{ fmc_domains_available | to_json }},
+            "domain_summary": {
+              "total_domains": "{{ fmc_domains_available | length }}",
+              "accessible_domains": "{{ fmc_domains_available | length if domain_test.response is defined else 0 }}",
+              "multi_domain_deployment": "{{ 'Yes' if fmc_domains_available | length > 1 else 'No' }}",
+              "domain_architecture": "{{ 'Multi-Tenant' if fmc_domains_available | length > 1 else 'Single Domain' }}"
+            }
+          },
+          "security_assessment": {
+            "access_control": {
+              "policy_discovery_status": "{{ 'SUCCESS' if access_policy_test.response is defined else 'FAILED' if domain_test.response is defined else 'SKIPPED' }}",
+              "policies_discovered": "{{ access_policy_test.response | length | default(0) if access_policy_test is defined and access_policy_test.response is defined else 0 }}",
+              "policy_assessment_possible": "{{ 'Yes' if access_policy_test.response is defined else 'No' }}",
+              "security_rule_analysis_ready": "{{ fmc_access_policies_test_passed | default(false) }}"
+            },
+            "compliance_indicators": {
+              "api_accessibility": "{{ 'Compliant' if server_version_test.response is defined else 'Non-Compliant' }}",
+              "authentication_working": "{{ 'Compliant' if server_version_test.response is defined else 'Non-Compliant' }}",
+              "authorization_proper": "{{ 'Compliant' if domain_test.response is defined else 'Non-Compliant' }}",
+              "policy_visibility": "{{ 'Compliant' if access_policy_test.response is defined else 'Limited' if domain_test.response is defined else 'Non-Compliant' }}",
+              "overall_compliance_score": "{{ (((server_version_test.response is defined) | int + (domain_test.response is defined) | int + (access_policy_test.response is defined) | int) * 25) | round(1) }}%"
+            },
+            "risk_assessment": {
+              "connectivity_risk": "{{ 'LOW' if server_version_test.response is defined else 'HIGH' }}",
+              "access_control_risk": "{{ 'LOW' if domain_test.response is defined else 'MEDIUM' if server_version_test.response is defined else 'HIGH' }}",
+              "automation_readiness_risk": "{{ 'LOW' if (server_version_test.response is defined and domain_test.response is defined and access_policy_test.response is defined) else 'MEDIUM' if (server_version_test.response is defined and domain_test.response is defined) else 'HIGH' }}",
+              "overall_risk_level": "{{ 'LOW' if (server_version_test.response is defined and domain_test.response is defined) else 'HIGH' }}"
+            }
+          },
+          "operational_readiness": {
+            "automation_capabilities": {
+              "ansible_ready": "{{ fmc_connection_test_passed | default(false) }}",
+              "api_operations_available": "{{ 'Full' if access_policy_test.response is defined else 'Limited' if domain_test.response is defined else 'None' }}",
+              "configuration_management_ready": "{{ 'Yes' if (server_version_test.response is defined and domain_test.response is defined) else 'No' }}",
+              "policy_automation_ready": "{{ 'Yes' if access_policy_test.response is defined else 'No' }}"
+            },
+            "next_steps": [
+              {% if server_version_test.response is not defined %}"Resolve FMC connectivity and authentication issues",{% endif %}
+              {% if domain_test.response is not defined and server_version_test.response is defined %}"Verify user permissions and domain access rights",{% endif %}
+              {% if access_policy_test.response is not defined and domain_test.response is defined %}"Check policy-level permissions for security assessment tasks",{% endif %}
+              {% if server_version_test.response is defined and domain_test.response is defined and access_policy_test.response is defined %}"Proceed with comprehensive security assessment",{% endif %}
+              "Review security hardening compliance requirements",
+              "Plan rule analysis and optimization tasks",
+              "Schedule regular connectivity validation"
+            ],
+            "recommended_monitoring": {
+              "connection_health_check_frequency": "Daily",
+              "api_performance_monitoring": "Recommended",
+              "access_policy_change_detection": "{{ 'Available' if access_policy_test.response is defined else 'Not Available' }}",
+              "version_compliance_tracking": "Monthly"
+            }
+          },
+          "troubleshooting_information": {
+            "connection_parameters": {
+              "target_host": "{{ ansible_host }}",
+              "connection_timeout": "{{ fmc_timeout | default(30) }} seconds",
+              "retry_attempts": "{{ max_retries | default(3) }}",
+              "debug_mode": "{{ debug_mode | default(false) }}",
+              "fail_on_error": "{{ fail_on_connection_error | default(true) }}"
+            },
+            "error_details": {
+              "server_version_error": "{{ server_version_test.msg | default('No error') }}",
+              "domain_access_error": "{{ domain_test.msg | default('No error') }}",
+              "policy_access_error": "{{ access_policy_test.msg | default('No error') if access_policy_test is defined else 'Test skipped' }}"
+            },
+            "diagnostic_data": {
+              "dns_resolution_required": "{{ ansible_host | ipaddr | ternary('No', 'Yes') }}",
+              "connection_type": "HTTPS REST API",
+              "authentication_type": "Username/Password",
+              "user_agent": "Ansible cisco.fmcansible collection"
+            }
+          },
+          "raw_api_responses": {
+            "server_version_response": {{ server_version_test.response | default({}) | to_json }},
+            "domain_response": {{ domain_test.response | default({}) | to_json }},
+            "access_policy_response": {{ access_policy_test.response | default({}) | to_json if access_policy_test is defined else {} | to_json }}
+          },
+          "report_summary": {
+            "total_tests_executed": "{{ 2 + (access_policy_test is defined) | int }}",
+            "tests_passed": "{{ (server_version_test.response is defined) | int + (domain_test.response is defined) | int + (access_policy_test.response is defined) | int }}",
+            "tests_failed": "{{ (server_version_test.response is not defined) | int + (domain_test.response is not defined) | int + (access_policy_test.response is not defined and domain_test.response is defined) | int }}",
+            "critical_failures": "{{ (server_version_test.response is not defined) | int + (domain_test.response is not defined) | int }}",
+            "overall_success_rate": "{{ ((server_version_test.response is defined) | int + (domain_test.response is defined) | int + (access_policy_test.response is defined) | int) / (2 + (access_policy_test is defined) | int) * 100 | round(1) }}%",
+            "assessment_completeness": "{{ 'COMPLETE' if (server_version_test.response is defined and domain_test.response is defined and access_policy_test.response is defined) else 'PARTIAL' if (server_version_test.response is defined and domain_test.response is defined) else 'INCOMPLETE' }}"
+          }
+        }
+      }
+    dest: "{{ report_output_dir | default('./') }}/fmc_connection_{{ ansible_host }}_{{ lookup('pipe', 'date +%s') }}.json"
+  delegate_to: localhost
+  when: fmc_json_output | default(false) | bool
+
+- name: Fail if critical FMC connection tests failed
   fail:
-    msg: "Critical FMC connection tests failed. Please check credentials and connectivity."
+    msg: "Critical FMC connection tests failed. Please check credentials and connectivity to {{ ansible_host }}."
   when: 
     - not fmc_connection_test_passed
     - fail_on_connection_error | default(true) | bool

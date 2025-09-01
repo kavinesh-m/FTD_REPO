@@ -1,10 +1,312 @@
 ---
 # FMC Rule Management - Time-based Disable/Delete Tasks
 
+# ================================
+# VARIABLE VALIDATION FRAMEWORK
+# ================================
+
+# - name: Test FMC Authentication
+#   uri:
+#     url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_platform/v1/auth/generatetoken"
+#     method: POST
+#     user: "{{ fmc_username }}"
+#     password: "{{ fmc_password }}"
+#     validate_certs: "{{ validate_certs }}"
+#     force_basic_auth: yes
+#     timeout: "{{ api_timeout | default(30) }}"
+#   register: auth_test
+#   failed_when: false
+
+# - name: Debug auth_test response
+#   debug:
+#     msg: "Authentication response: {{ auth_test }}"
+#   when: 
+#     - auth_test.status == 204
+#     - debug_mode | default(false) | bool
+
+# - name: Set FMC Token
+#   set_fact:
+#     fmc_token: "{{ auth_test.x_auth_access_token }}"
+#   when:
+#     - auth_test.status == 204
+
+# - name: Debug FMC Token
+#   debug:
+#     msg: "FMC Token: {{ fmc_token | default('Not set') }}"
+
+# Required Variables Validation
+- name: "VALIDATION: Check required FMC rule management variables"
+  assert:
+    that:
+      - rule_expiry_check_enabled is defined
+      - rule_expiry_check_enabled is boolean
+      - rule_auto_disable is defined
+      - rule_auto_disable is boolean
+      - rule_auto_delete is defined
+      - rule_auto_delete is boolean
+      - rule_backup_before_delete is defined
+      - rule_backup_before_delete is boolean
+      - check_metadata_expiry is defined
+      - check_metadata_expiry is boolean
+      - check_name_based_expiry is defined
+      - check_name_based_expiry is boolean
+    fail_msg: |
+      ❌ VALIDATION FAILED: Required FMC rule management variables are missing or invalid!
+
+      ⚠️  REQUIRED VARIABLES:
+      • rule_expiry_check_enabled (boolean): Enable rule expiry checking
+      • rule_auto_disable (boolean): Automatically disable expired rules
+      • rule_auto_delete (boolean): Automatically delete expired rules
+      • rule_backup_before_delete (boolean): Backup rules before deletion
+      • check_metadata_expiry (boolean): Check expiry from rule metadata
+      • check_name_based_expiry (boolean): Check expiry from rule names
+
+      📝 HOW TO FIX:
+      1. Add required variables to your inventory or group_vars
+      2. Check roles/fmc_rule_management/defaults/main.yml for examples
+      3. Ensure all boolean values are true/false (not strings)
+
+      📖 DOCUMENTATION: See README.md for rule management configuration
+    success_msg: "✅ All required FMC rule management variables are properly configured"
+
+# FMC Connection Dependencies Validation
+- name: "VALIDATION: Check FMC connection dependencies"
+  assert:
+    that:
+      - fmc_connection_test_passed is defined
+      - fmc_connection_test_passed is boolean
+      - fmc_connection_test_passed == true
+      - fmc_host is defined
+      - fmc_host | length > 0
+      - fmc_username is defined
+      - fmc_username | length > 0
+      - fmc_password is defined
+      - fmc_password | length > 0
+    fail_msg: |
+      ❌ VALIDATION FAILED: FMC connection dependencies not available!
+
+      ⚠️  MISSING DEPENDENCIES:
+      • fmc_connection_test_passed: {{ fmc_connection_test_passed | default('undefined') }}
+      • fmc_host: {{ fmc_host | default('undefined') }}
+      • fmc_username: {{ fmc_username | default('undefined') }}
+      • fmc_password: {{ '[REDACTED]' if fmc_password is defined else 'undefined' }}
+
+      🔧 PREREQUISITES:
+      1. Run 'fmc_connection' role first to establish FMC connection
+      2. Ensure FMC credentials are properly configured
+      3. Verify FMC is accessible and credentials are valid
+
+      📝 COMMAND EXAMPLE:
+      ansible-playbook -i inventory.ini main.yml --tags "connection,rules"
+
+      📖 DOCUMENTATION: See README.md for FMC connection setup
+    success_msg: "✅ FMC connection dependencies are satisfied"
+
+# API Configuration Validation
+- name: "VALIDATION: Check API configuration"
+  assert:
+    that:
+      - api_timeout is defined
+      - api_timeout is number
+      - api_timeout >= 10
+      - api_timeout <= 300
+      - api_retries is defined
+      - api_retries is number
+      - api_retries >= 1
+      - api_retries <= 10
+      - api_delay is defined
+      - api_delay is number
+      - api_delay >= 1
+      - api_delay <= 60
+    fail_msg: |
+      ❌ VALIDATION FAILED: API configuration is invalid!
+
+      ⚠️  CURRENT VALUES:
+      • api_timeout: {{ api_timeout | default('undefined') }} (must be 10-300 seconds)
+      • api_retries: {{ api_retries | default('undefined') }} (must be 1-10)
+      • api_delay: {{ api_delay | default('undefined') }} (must be 1-60 seconds)
+
+      📝 RECOMMENDED VALUES:
+      • api_timeout: 30
+      • api_retries: 3
+      • api_delay: 5
+
+      📝 HOW TO FIX:
+      Set valid numeric values within the specified ranges
+
+      📖 DOCUMENTATION: See roles/fmc_rule_management/defaults/main.yml
+    success_msg: "✅ API configuration is valid (timeout: {{ api_timeout }}s, retries: {{ api_retries }}, delay: {{ api_delay }}s)"
+
+# Rule Management Safety Checks
+- name: "VALIDATION: Check rule management safety configuration"
+  assert:
+    that:
+      - not (rule_auto_delete == true and rule_backup_before_delete == false)
+    fail_msg: |
+      ❌ VALIDATION FAILED: Unsafe rule management configuration!
+
+      ⚠️  SAFETY ISSUE:
+      • rule_auto_delete: {{ rule_auto_delete }}
+      • rule_backup_before_delete: {{ rule_backup_before_delete }}
+
+      🚨 SAFETY REQUIREMENT:
+      When rule_auto_delete is enabled, rule_backup_before_delete MUST be enabled
+      to prevent accidental data loss.
+
+      📝 HOW TO FIX:
+      Set rule_backup_before_delete: true when enabling automatic deletion
+
+      📖 BEST PRACTICE: Always backup rules before deletion
+    success_msg: "✅ Rule management safety configuration is valid"
+  when: rule_auto_delete is defined
+
+# Expiry Detection Method Validation
+- name: "VALIDATION: Check expiry detection methods"
+  assert:
+    that:
+      - check_metadata_expiry == true or check_name_based_expiry == true
+    fail_msg: |
+      ❌ VALIDATION FAILED: No expiry detection methods enabled!
+
+      ⚠️  CURRENT CONFIGURATION:
+      • check_metadata_expiry: {{ check_metadata_expiry }}
+      • check_name_based_expiry: {{ check_name_based_expiry }}
+
+      ⚠️  REQUIREMENT:
+      At least one expiry detection method must be enabled
+
+      📝 DETECTION METHODS:
+      • Metadata-based: Uses rule metadata for expiry dates
+      • Name-based: Extracts dates from rule names (YYYY-MM-DD format)
+
+      📝 HOW TO FIX:
+      Set at least one method to true:
+      check_metadata_expiry: true
+      OR
+      check_name_based_expiry: true
+
+      📖 DOCUMENTATION: See README.md for expiry detection methods
+    success_msg: "✅ Expiry detection methods configured (metadata: {{ check_metadata_expiry }}, name-based: {{ check_name_based_expiry }})"
+  when: rule_expiry_check_enabled | default(true)
+
+# Date Format Validation
+- name: "VALIDATION: Check expiry date format"
+  assert:
+    that:
+      - expiry_date_format is defined
+      - expiry_date_format | length > 0
+      - expiry_date_format == "%Y-%m-%d"
+    fail_msg: |
+      ❌ VALIDATION FAILED: Invalid expiry date format!
+
+      ⚠️  CURRENT FORMAT: {{ expiry_date_format | default('undefined') }}
+      ⚠️  REQUIRED FORMAT: %Y-%m-%d (YYYY-MM-DD)
+
+      📝 EXAMPLES:
+      • Valid: "2024-12-31"
+      • Invalid: "12/31/2024", "31-12-2024"
+
+      📝 HOW TO FIX:
+      Set expiry_date_format: "%Y-%m-%d"
+
+      📖 DOCUMENTATION: See Python strftime documentation
+    success_msg: "✅ Expiry date format is valid ({{ expiry_date_format }})"
+  when:
+    - check_name_based_expiry | default(true)
+    - expiry_date_format is defined
+
+# Output Directory Validation
+- name: "VALIDATION: Check output directories"
+  assert:
+    that:
+      - report_output_dir is defined
+      - report_output_dir | length > 0
+      - not (report_output_dir | regex_search('^\s*$'))
+      - log_output_dir is defined
+      - log_output_dir | length > 0
+      - not (log_output_dir | regex_search('^\s*$'))
+      - config_output_dir is defined
+      - config_output_dir | length > 0
+      - not (config_output_dir | regex_search('^\s*$'))
+    fail_msg: |
+      ❌ VALIDATION FAILED: Output directories are invalid!
+
+      ⚠️  CURRENT VALUES:
+      • report_output_dir: "{{ report_output_dir | default('undefined') }}"
+      • log_output_dir: "{{ log_output_dir | default('undefined') }}"
+      • config_output_dir: "{{ config_output_dir | default('undefined') }}"
+
+      ⚠️  REQUIREMENTS:
+      • All directories must be non-empty paths
+      • Paths cannot contain only whitespace
+
+      📝 EXAMPLES: "./reports", "/tmp/fmc_outputs", "./output"
+      📝 HOW TO FIX: Set valid directory paths for all output locations
+
+      📖 DOCUMENTATION: See README.md for output configuration
+    success_msg: "✅ Output directories are valid"
+
+# Optional Variables Validation
+- name: "VALIDATION: Check optional rule management variables"
+  assert:
+    that:
+      - generate_html_reports is boolean
+    fail_msg: |
+      ❌ VALIDATION FAILED: Optional variable has invalid type!
+
+      ⚠️  TYPE ERROR:
+      • generate_html_reports must be boolean (true/false)
+      • Current value: {{ generate_html_reports }} ({{ generate_html_reports | type_debug }})
+
+      📝 HOW TO FIX: Set generate_html_reports: true or false
+    success_msg: "✅ Optional rule management variables are valid"
+  when: generate_html_reports is defined
+
+# Display Validation Summary
+- name: "VALIDATION: FMC rule management validation summary"
+  debug:
+    msg:
+      - "=========================================="
+      - "  FMC RULE MANAGEMENT VALIDATION COMPLETED"
+      - "=========================================="
+      - "✅ All required variables validated"
+      - "✅ FMC connection: {{ 'VERIFIED' if fmc_connection_test_passed else 'FAILED' }}"
+      - "✅ Expiry checking: {{ 'ENABLED' if rule_expiry_check_enabled else 'DISABLED' }}"
+      - "   └── Metadata-based: {{ 'ENABLED' if check_metadata_expiry else 'DISABLED' }}"
+      - "   └── Name-based: {{ 'ENABLED' if check_name_based_expiry else 'DISABLED' }}"
+      - "✅ Auto disable: {{ 'ENABLED' if rule_auto_disable else 'DISABLED' }}"
+      - "✅ Auto delete: {{ 'ENABLED' if rule_auto_delete else 'DISABLED' }}"
+      - "✅ Backup before delete: {{ 'ENABLED' if rule_backup_before_delete else 'DISABLED' }}"
+      - "✅ API timeout: {{ api_timeout }}s, Retries: {{ api_retries }}, Delay: {{ api_delay }}s"
+      - "✅ Target FMC: {{ fmc_host }}"
+      - "=========================================="
+
+# ================================
+# FMC RULE MANAGEMENT TASKS
+# ================================
+
+# - name: Get Domain Information
+#   cisco.fmcansible.fmc_configuration:
+#     operation: getAllDomain
+#   register: domain_response
+#   retries: "{{ api_retries | default(3) }}"
+#   delay: "{{ api_delay | default(5) }}"
+#   until: domain_response is succeeded or domain_response.attempts >= (api_retries | default(3))
+#   failed_when: false
+
 - name: Get Domain Information
-  cisco.fmcansible.fmc_configuration:
-    operation: getAllDomain
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_platform/v1/info/domain"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200, 401, 403, 500]
   register: domain_response
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
   failed_when: false
 
 - name: Debug Domain Response
@@ -27,19 +329,64 @@
     msg: "Failed to obtain domain information from FMC"
   when: domain_uuid is not defined or domain_uuid == ""
 
-- name: Get All Access Policies
+- name: Get All Access Policies (FMCAnsible)
   cisco.fmcansible.fmc_configuration:
     operation: getAllAccessPolicy
     path_params:
       domainUUID: "{{ domain_uuid }}"
   register: policies
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  until: policies is succeeded or policies.attempts >= (api_retries | default(3))
+  failed_when: false
+
+- name: Fallback - Get All Access Policies via REST API
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: false
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200]
+  register: policies_fallback
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  when: policies.failed | default(false)
+
+- name: Set policies response from successful method
+  set_fact:
+    policies: "{{ policies if not (policies.failed | default(false)) else {'response': policies_fallback.json} }}"
 
 - name: Debug Access Policies
   debug:
     var: policies
-  when: 
+  when:
     - policies is defined
     - debug_mode | default(false) | bool
+
+- name: Validate Access Policies Response
+  fail:
+    msg: |
+      ❌ FAILED: Unable to retrieve access policies from FMC!
+
+      ⚠️  ERRORS ENCOUNTERED:
+      • FMCAnsible error: {{ policies.msg | default('No error message') }}
+      • REST API error: {{ policies_fallback.msg | default('Not attempted') }}
+
+      🔧 TROUBLESHOOTING:
+      1. Check FMC connection and authentication token
+      2. Verify domain UUID is correct: {{ domain_uuid }}
+      3. Ensure user has access policy read permissions
+      4. Check FMC server accessibility: {{ fmc_host }}
+
+      📝 COMMAND TO TEST MANUALLY:
+      curl -k -H "X-auth-access-token: YOUR_TOKEN" \
+           "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies"
+  when:
+    - (policies.failed | default(false))
+    - (policies_fallback.failed | default(true))
 
 - name: Validate required parameters
   fail:
@@ -57,6 +404,121 @@
     deleted_rules: []
     rule_summary: {}
     current_epoch: "{{ lookup('pipe', 'date +%s') | int }}"
+    processing_start_time: "{{ lookup('pipe', 'date +%s') | int }}"
+    policy_breakdown: {}
+    rule_statistics: {}
+    system_info: {}
+    configuration_used: {}
+    warnings: []
+    recommendations: []
+    rule_analysis: {}
+    api_call_count: 0
+    api_response_times: []
+    processing_metrics: {}
+
+# ================================
+# SYSTEM INFORMATION COLLECTION
+# ================================
+
+- name: Get FMC System Information
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllSystemInformation
+  register: system_response
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  until: system_response is succeeded or system_response.attempts >= (api_retries | default(3))
+  failed_when: false
+
+- name: Track API Call Performance - System Info
+  set_fact:
+    api_call_count: "{{ api_call_count | int + 1 }}"
+    api_response_times: "{{ api_response_times + [{'endpoint': 'system_info', 'response_time': lookup('pipe', 'date +%s') | int - processing_start_time | int}] }}"
+
+- name: Get FMC Version Information via REST API
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_platform/v1/info/serverversion"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: false
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200]
+  register: version_response
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Track API Call Performance - Version Info
+  set_fact:
+    api_call_count: "{{ api_call_count | int + 1 }}"
+
+- name: Get Current User Information
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/users/self"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: false
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200]
+  register: user_response
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Track API Call Performance - User Info
+  set_fact:
+    api_call_count: "{{ api_call_count | int + 1 }}"
+
+- name: Get Audit Records for System Context
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/audit/auditrecords?limit=1"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: false
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200]
+  register: audit_response
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Track API Call Performance - Audit Info
+  set_fact:
+    api_call_count: "{{ api_call_count | int + 1 }}"
+
+- name: Build Comprehensive System Information
+  set_fact:
+    system_info:
+      fmc_host: "{{ fmc_host }}"
+      domain_uuid: "{{ domain_uuid }}"
+      domain_name: "{{ (domain_response.response['items'][0].name if (domain_response is defined and domain_response.response is defined and domain_response.response['items']|length > 0) else 'Unknown') }}"
+      fmc_version: "{{ version_response.json.serverVersion | default('Unknown') }}"
+      fmc_build: "{{ version_response.json.buildNumber | default('Unknown') }}"
+      current_user: "{{ user_response.json.name | default(fmc_username) }}"
+      user_roles: "{{ user_response.json.userRoles | default([]) }}"
+      system_time: "{{ lookup('pipe', 'date +%s') }}"
+      assessment_initiated_by: "{{ ansible_user_id | default('ansible') }}"
+      total_policies: "{{ (policies.response['items'] | length if (policies is defined and policies.response is defined and policies.response['items'] is defined) else 0) }}"
+      connection_method: "FMCAnsible + REST API"
+      api_timeout_configured: "{{ api_timeout | default(30) }}"
+      api_retries_configured: "{{ api_retries | default(3) }}"
+      read_only_mode: true
+      last_audit_entry: >-
+        {% if audit_response is defined and audit_response.json is defined and
+              audit_response.json.items is defined and
+              audit_response.json.items is iterable and
+              audit_response.json.items|length > 0 and
+              audit_response.json.items[0].time is defined %}
+          {{ audit_response.json.items[0].time }}
+        {% else %}
+          Unknown
+        {% endif %}
+
 
 - name: Get Rules for Each Policy
   cisco.fmcansible.fmc_configuration:
@@ -66,46 +528,184 @@
       containerUUID: "{{ item.id }}"
   loop: "{{ policies.response['items'] | default([]) }}"
   register: policy_rules
-  when: 
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  until: policy_rules is succeeded or policy_rules.attempts >= (api_retries | default(3))
+  failed_when: false
+  when:
     - policies.response is defined
     - policies.response['items'] | length > 0
 
-- name: Process Rules and Identify Expired Ones
+- name: Track API Call Performance - Get Rules
+  set_fact:
+    api_call_count: "{{ api_call_count | int + (policies.response['items'] | default([]) | length) }}"
+
+# ================================
+# RULE HIT COUNTS COLLECTION
+# ================================
+
+- name: Get Rule Hit Counts for Each Policy
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.id }}/operational/hitcounts"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: false
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200, 400, 404]  # 400/404 may occur if hit counts not available
+  loop: "{{ policies.response['items'] | default([]) }}"
+  register: policy_hitcounts
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+  when:
+    - policies.response is defined
+    - policies.response['items'] | length > 0
+
+- name: Track API Call Performance - Hit Counts
+  set_fact:
+    api_call_count: "{{ api_call_count | int + (policies.response['items'] | default([]) | length) }}"
+
+- name: Process Hit Counts Data
+  set_fact:
+    policy_hitcounts_dict: "{{ policy_hitcounts_dict | default({}) | combine({item.item.id: {
+      'policy_id': item.item.id,
+      'policy_name': item.item.name,
+      'status_code': item.status,
+      'hit_counts_available': (item.status == 200),
+      'hit_counts_data': item.json if item.status == 200 else {},
+      'error_message': item.msg if item.failed else 'Success' }}) }}"
+  loop: "{{ policy_hitcounts.results | default([]) }}"
+  when:
+    - policy_hitcounts is defined
+    - policy_hitcounts.results is defined
+
+# ================================
+# RULE CREATION/MODIFICATION DATES
+# ================================
+
+- name: Get Detailed Rule Information with Metadata
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ outer_item.id }}/accessrules/{{ item.id }}?expanded=true"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: false
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200, 404]
+  loop: "{{ (policy_rules.results[ansible_loop.index0].response['items'] | default([])) }}"
+  loop_control:
+    loop_var: item
+    extended: true
+  vars:
+    outer_item: "{{ policies.response['items'][ansible_loop.index0] }}"
+  register: detailed_rules
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+  when:
+    - policy_rules is defined
+    - policy_rules.results is defined
+    - policy_rules.results | length > 0
+
+- name: Track API Call Performance - Detailed Rules
+  set_fact:
+    api_call_count: "{{ api_call_count | int + (all_rules | default([]) | length) }}"
+
+- name: Build Rule Creation/Modification Metadata
+  set_fact:
+    rule_metadata_dict: "{{ rule_metadata_dict | default({}) | combine({item.json.id: {
+      'rule_id': item.json.id,
+      'rule_name': item.json.name,
+      'created_date': item.json.metadata.timestamp if (item.status == 200 and item.json.metadata is defined and item.json.metadata.timestamp is defined) else 'Unknown',
+      'last_modified': item.json.metadata.lastUser.timestamp if (item.status == 200 and item.json.metadata is defined and item.json.metadata.lastUser is defined and item.json.metadata.lastUser.timestamp is defined) else 'Unknown',
+      'created_by': item.json.metadata.readOnlyState if (item.status == 200 and item.json.metadata is defined and item.json.metadata.readOnlyState is defined) else 'Unknown',
+      'last_modified_by': item.json.metadata.lastUser.name if (item.status == 200 and item.json.metadata is defined and item.json.metadata.lastUser is defined and item.json.metadata.lastUser.name is defined) else 'Unknown',
+      'metadata_available': (item.status == 200 and item.json.metadata is defined) }}) }}"
+  loop: "{{ detailed_rules.results | default([]) }}"
+  when:
+    - detailed_rules is defined
+    - detailed_rules.results is defined
+    - item.json is defined
+    - item.json.id is defined
+
+- name: Process Rules and Build Comprehensive Data
   set_fact:
     all_rules: "{{ all_rules + (item.response['items'] | default([])) }}"
+    policy_breakdown: "{{ policy_breakdown | combine({current_policy.name: {
+      'id': current_policy.id,
+      'name': current_policy.name,
+      'total_rules': (item.response['items'] | default([]) | length),
+      'enabled_rules': (item.response['items'] | default([]) | selectattr('enabled', 'equalto', true) | list | length),
+      'disabled_rules': (item.response['items'] | default([]) | selectattr('enabled', 'equalto', false) | list | length),
+      'rules': item.response['items'] | default([]) }}) }}"
+  vars:
+    current_policy: "{{ policies.response['items'][ansible_loop.index0] }}"
   loop: "{{ policy_rules.results | default([]) }}"
-  when: 
+  when:
     - policy_rules is defined
     - policy_rules.results is defined
     - item.response is defined
     - item.response['items'] is defined
     - item.response['items'] is iterable
-    - item.response['items'] | length > 0
 
+# First, identify rules with metadata-based expiry
 - name: Identify Rules with Expiry Metadata
   set_fact:
-    expired_rules: "{{ expired_rules + [item] }}"
+    metadata_expired_rules: "{{ metadata_expired_rules | default([]) + [item] }}"
   loop: "{{ all_rules | default([]) }}"
-  when: 
+  when:
     - all_rules is defined
     - all_rules | length > 0
     - item.metadata is defined
     - item.metadata.expiry_date is defined
     - (item.metadata.expiry_date | int) < current_epoch
+    - check_metadata_expiry | bool
     - rule_expiry_check_enabled | bool
 
+# Then, identify rules with name-based expiry (avoiding duplicates)
 - name: Identify Rules with Name-based Expiry (YYYY-MM-DD format)
   set_fact:
-    expired_rules: "{{ expired_rules + [item] }}"
+    name_expired_rules: "{{ name_expired_rules | default([]) + [item] }}"
   loop: "{{ all_rules }}"
   vars:
     rule_date_match: "{{ item.name | regex_search('(\\d{4}-\\d{2}-\\d{2})') }}"
     rule_epoch: "{{ (rule_date_match + ' 00:00:00') | to_datetime('%Y-%m-%d %H:%M:%S') | int }}"
-  when: 
-    - rule_date_match is not none
-    - (rule_date_match + ' 00:00:00') is match('^\\d{4}-\\d{2}-\\d{2} 00:00:00$')
-    - rule_epoch < current_epoch
+    already_in_metadata: "{{ item.id in (metadata_expired_rules | default([]) | map(attribute='id') | list) }}"
+  when:
+    - check_name_based_expiry | bool
     - rule_expiry_check_enabled | bool
+    - rule_date_match is not none
+    - rule_date_match | length == 10  # Ensure YYYY-MM-DD format
+    - not already_in_metadata
+    - rule_epoch < current_epoch
+  failed_when: false  # Don't fail on datetime conversion errors
+
+# Combine both lists to create final expired rules list (avoiding duplicates)
+- name: Combine Expired Rules Lists
+  set_fact:
+    expired_rules: "{{ (metadata_expired_rules | default([])) + (name_expired_rules | default([])) }}"
+
+# Add expiry reason to each rule for better tracking
+- name: Add Expiry Reason to Rules
+  set_fact:
+    expired_rules: "{{ expired_rules_with_reason }}"
+  vars:
+    expired_rules_with_reason: |
+      {%- set rules_with_reason = [] -%}
+      {%- for rule in expired_rules -%}
+        {%- set rule_with_reason = rule | combine({'expiry_reason': 'unknown'}) -%}
+        {%- if rule.id in (metadata_expired_rules | default([]) | map(attribute='id') | list) -%}
+          {%- set rule_with_reason = rule | combine({'expiry_reason': 'metadata'}) -%}
+        {%- elif rule.id in (name_expired_rules | default([]) | map(attribute='id') | list) -%}
+          {%- set rule_with_reason = rule | combine({'expiry_reason': 'name_based'}) -%}
+        {%- endif -%}
+        {%- set _ = rules_with_reason.append(rule_with_reason) -%}
+      {%- endfor -%}
+      {{ rules_with_reason }}
+  when: expired_rules | length > 0
 
 - name: Backup Rules Before Modification
   copy:
@@ -135,7 +735,10 @@
       destinationPorts: "{{ item.destinationPorts | default({}) }}"
   loop: "{{ expired_rules }}"
   register: disable_results
-  when: 
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  until: disable_results is succeeded or disable_results.attempts >= (api_retries | default(3))
+  when:
     - expired_rules | length > 0
     - rule_auto_disable | bool
   failed_when: false
@@ -184,7 +787,7 @@
 - name: Save Rule Management Report
   copy:
     content: "{{ rule_summary | to_nice_json }}"
-    dest: "{{ report_output_dir }}/rule_management_{{ timestamp }}.json"
+    dest: "{{ report_output_dir }}/fmc_rule_management_{{ timestamp }}.json"
     mode: '0644'
   delegate_to: localhost
 
@@ -205,4 +808,4 @@
       - "Expired rules found: {{ expired_rules | length }}"
       - "Rules disabled: {{ disabled_rules | length }}"
       - "Rules deleted: {{ deleted_rules | length }}"
-      - "Report saved to: {{ report_output_dir }}/rule_management_{{ timestamp }}.json"
+      - "Report saved to: {{ report_output_dir }}/fmc_rule_management_{{ timestamp }}.json"

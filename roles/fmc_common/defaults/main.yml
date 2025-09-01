@@ -1,21 +1,55 @@
 ---
-# FMC Common Role Default Variables
+# FMC Common Role - Default Variables
+# This role provides common setup and validation for FMC automation
 
-# Output Directories
-config_output_dir: "../../outputs/configs"
-trace_output_dir: "../../outputs/packet_traces"
-report_output_dir: "../../outputs/reports"
-log_output_dir: "../../outputs/logs"
-
-# API Settings
-api_timeout: 30
-api_retries: 3
-api_delay: 5
-validate_certs: false
+# FMC Connection Settings
+fmc_host: "{{ ansible_host | default('') }}"
+fmc_port: 443
+fmc_username: "admin"
+fmc_password: ""
+fmc_timeout: 30
+fmc_validate_certs: false
 fmc_protocol: "https"
+
+# Output and Logging Configuration
+config_output_dir: "{{ playbook_dir }}/outputs/configs"
+trace_output_dir: "{{ playbook_dir }}/outputs/packet_traces"
+report_output_dir: "{{ playbook_dir }}/outputs/reports"
+log_output_dir: "{{ playbook_dir }}/outputs/logs"
+temp_dir: "{{ playbook_dir }}/temp"
+
+# Common Flags
+debug_mode: false
+verbose_output: false
+create_backup: true
+
+# Role Execution Control Flags
+discover_ftd_devices: true
+extract_hardening_config: true
+ftd_hardening_enabled: true
+manage_rules: true
+manage_ftd_rules: true
+rule_expiry_check_enabled: true
+run_packet_tracer: false
+
+# Status Variables (set by roles during execution)
+fmc_connection_verified: false
+ftd_devices_found: false
+ftd_discovery_successful: false
+hardening_config_extracted: false
+
+# API Configuration
+fmc_api_version: "v1"
+fmc_api_base_url: "https://{{ fmc_host }}/api/fmc_config/{{ fmc_api_version }}"
+fmc_auth_url: "https://{{ fmc_host }}/api/fmc_platform/{{ fmc_api_version }}/auth/generatetoken"
 
 # Default domain UUID (FMC default)
 domain_uuid: "e276abec-e0f2-11e3-8169-6d9ed49b625f"
+
+# Retry Configuration
+max_retries: 3
+retry_delay: 5
+api_timeout: 30
 
 # Logging Settings
 log_level: "INFO"
@@ -24,7 +58,20 @@ log_rotation: true
 max_log_files: 10
 
 # Feature flags
-extract_hardening_config: true
-manage_rules: true
-run_packet_tracer: false
 generate_html_reports: true
+json_output: false
+generate_reports: true
+parallel_execution: false
+max_concurrent_operations: 5
+
+# Date/Time formatting
+timestamp_format: "%Y%m%d_%H%M%S"
+report_timestamp: "{{ '%Y%m%d_%H%M%S' | strftime }}"
+
+# Packet Tracer Settings
+packet_tracer_params_valid: >-
+  {{ (source_ip is defined) and
+     (dest_ip is defined) and
+     (interface_id is defined) and
+     (interface_name is defined) and
+     (interface_type is defined) }}

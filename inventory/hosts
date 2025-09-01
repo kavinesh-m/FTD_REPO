@@ -1,30 +1,17 @@
 [fmc_servers]
-fmc-sandbox ansible_host=fmcrestapisandbox.cisco.com
+fmc-sandbox ansible_host=10.12.201.212
 
 [fmc_servers:vars]
 ansible_connection=httpapi
 ansible_network_os=cisco.fmcansible.fmc
 ansible_httpapi_use_ssl=True
-ansible_httpapi_validate_certs=False
-ansible_httpapi_port=443
-ansible_user=helloa
-ansible_password=
-fmc_username=helloa
-fmc_password=
+ansible_user=admin
+ansible_password=ZAQ!23edcx
+
+fmc_username=admin
+fmc_password=ZAQ!23edcx
 fmc_host={{ ansible_host }}
 fmc_port=443
 fmc_protocol=https
 domain_uuid=e276abec-e0f2-11e3-8169-6d9ed49b625f
 validate_certs=false
-
-[vfmc]
-
-[vfmc:vars]
-ansible_connection=httpapi
-ansible_network_os=cisco.fmcansible.fmc
-ansible_httpapi_use_ssl=True
-ansible_httpapi_validate_certs=False
-ansible_httpapi_port=443
-ansible_user=helloa
-ansible_password=INs!R09j6#Ec
-network_type=HOST

@@ -1,0 +1,7 @@
+---
+galaxy_info:
+  author: FMC Automation Team
+  description: Role for implementing FTD security hardening based on Security Hardening Benchmark
+  license: MIT
+  min_ansible_version: "2.18"
+dependencies: []

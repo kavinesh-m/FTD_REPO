@@ -2,25 +2,286 @@
 # FMC Security Hardening Tasks
 # Implements H-Cloud Security Hardening Benchmark requirements
 
-- name: Set timestamp variable
-  set_fact:
-    timestamp: "{{ ansible_date_time.date }}_{{ ansible_date_time.time | replace(':', '-') }}"
-  when: timestamp is not defined
+#==============================================================================
+# VARIABLE VALIDATION AND SETUP
+#==============================================================================
 
-- name: Initialize Hardening Process
+# - name: Test FMC Authentication
+#   uri:
+#     url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_platform/v1/auth/generatetoken"
+#     method: POST
+#     user: "{{ fmc_username }}"
+#     password: "{{ fmc_password }}"
+#     validate_certs: "{{ validate_certs }}"
+#     force_basic_auth: yes
+#     timeout: "{{ api_timeout | default(30) }}"
+#   register: auth_test
+#   failed_when: false
+
+# - name: Debug auth_test response
+#   debug:
+#     msg: "Authentication response: {{ auth_test }}"
+#   when: 
+#     - auth_test.status == 204
+#     - debug_mode | default(false) | bool
+
+# - name: Set FMC Token
+#   set_fact:
+#     fmc_token: "{{ auth_test.x_auth_access_token }}"
+#   when:
+#     - auth_test.status == 204
+
+- name: Initialize role execution
   debug:
     msg:
-      - "=== FMC SECURITY HARDENING PROCESS ==="
+      - "=========================================="
+      - "      FMC SECURITY HARDENING EXECUTION"
+      - "=========================================="
+      - "Starting FMC hardening role execution..."
+      - "Timestamp: {{ '%Y-%m-%d %H:%M:%S' | strftime }}"
+  run_once: true
+
+- name: Define required variables list
+  set_fact:
+    fmc_hardening_required_vars:
+      - fmc_host
+      - fmc_username
+      - fmc_password
+    fmc_hardening_optional_vars:
+      - hardening_enabled
+      - apply_hardening
+      - validate_compliance
+      - extract_system_info
+      - extract_access_policies
+      - extract_network_policies
+      - extract_devices
+      - extract_network_objects
+      - extract_port_objects
+      - hostname_format_validation
+      - expected_hostname_pattern
+      - warning_banner_enabled
+      - warning_banner_message
+      - management_acl_enabled
+      - allowed_management_ips
+      - session_timeout_enabled
+      - browser_session_timeout
+      - shell_timeout
+      - password_policy_enabled
+      - password_min_length
+      - password_require_categories
+      - health_monitoring_enabled
+      - compliance_report_enabled
+    fmc_hardening_output_vars:
+      - config_output_dir
+      - log_output_dir
+      - report_output_dir
+    fmc_hardening_settings_vars:
+      - api_timeout
+      - api_retries
+      - api_delay
+      - validate_certs
+      - debug_mode
+      - generate_html_reports
+
+- name: Check for undefined required variables
+  set_fact:
+    fmc_hardening_undefined_required: "{{ fmc_hardening_undefined_required | default([]) + [item] }}"
+  loop: "{{ fmc_hardening_required_vars }}"
+  when: vars[item] is not defined
+  delegate_to: localhost
+  run_once: true
+
+- name: Check for empty required variables
+  set_fact:
+    fmc_hardening_empty_required: "{{ fmc_hardening_empty_required | default([]) + [item] }}"
+  loop: "{{ fmc_hardening_required_vars }}"
+  when:
+    - vars[item] is defined
+    - vars[item] == '' or vars[item] == none
+  delegate_to: localhost
+  run_once: true
+
+- name: Compile validation errors
+  set_fact:
+    fmc_hardening_validation_errors: >-
+      {{
+        (fmc_hardening_undefined_required | default([]) |
+         map('regex_replace', '^(.*)$', '\1 is not defined') | list) +
+        (fmc_hardening_empty_required | default([]) |
+         map('regex_replace', '^(.*)$', '\1 is empty') | list)
+      }}
+  delegate_to: localhost
+  run_once: true
+
+- name: Display validation errors and halt execution
+  fail:
+    msg:
+      - "=========================================="
+      - "    FMC HARDENING VALIDATION FAILED"
+      - "=========================================="
+      - "The following required variables are missing or invalid:"
+      - ""
+      - "{{ fmc_hardening_validation_errors | join('\n') }}"
+      - ""
+      - "REQUIRED VARIABLES:"
+      - "  - fmc_host: FMC server hostname or IP address"
+      - "  - fmc_username: FMC username for API access"
+      - "  - fmc_password: FMC password for API access"
+      - ""
+      - "HARDENING CONFIGURATION:"
+      - "  - hardening_enabled: Enable hardening checks (default: true)"
+      - "  - apply_hardening: Apply hardening changes (default: false)"
+      - "  - validate_compliance: Validate compliance status (default: false)"
+      - ""
+      - "EXTRACTION SETTINGS:"
+      - "  - extract_system_info: Extract system information (default: true)"
+      - "  - extract_access_policies: Extract access policies (default: true)"
+      - "  - extract_network_policies: Extract network policies (default: true)"
+      - "  - extract_devices: Extract device information (default: true)"
+      - "  - extract_network_objects: Extract network objects (default: true)"
+      - ""
+      - "SECURITY POLICIES:"
+      - "  - hostname_format_validation: Validate hostname format (default: true)"
+      - "  - warning_banner_enabled: Enable warning banner (default: true)"
+      - "  - management_acl_enabled: Enable management ACL (default: true)"
+      - "  - session_timeout_enabled: Enable session timeout (default: true)"
+      - "  - password_policy_enabled: Enable password policy (default: true)"
+      - "  - health_monitoring_enabled: Enable health monitoring (default: true)"
+      - ""
+      - "OUTPUT CONFIGURATION:"
+      - "  - config_output_dir: Directory for configuration files"
+      - "  - log_output_dir: Directory for log files"
+      - "  - report_output_dir: Directory for reports"
+      - ""
+      - "Please check your inventory file and group_vars configuration."
+      - "=========================================="
+  when: fmc_hardening_validation_errors | default([]) | length > 0
+  delegate_to: localhost
+  run_once: true
+
+- name: Validate management ACL IP addresses (if ACL enabled)
+  fail:
+    msg:
+      - "=========================================="
+      - "    INVALID MANAGEMENT ACL IP ADDRESS"
+      - "=========================================="
+      - "IP address '{{ item }}' in allowed_management_ips is not valid"
+      - "Expected format: X.X.X.X/XX (CIDR notation)"
+      - "Current allowed_management_ips:"
+      - "{{ allowed_management_ips | to_nice_json }}"
+      - "=========================================="
+  when:
+    - management_acl_enabled | default(true) | bool
+    - allowed_management_ips is defined
+    - allowed_management_ips | length > 0
+    - item is not match('^(?:[0-9]{1,3}\.){3}[0-9]{1,3}/[0-9]{1,2}$')
+  loop: "{{ allowed_management_ips | default([]) }}"
+
+- name: Validate session timeout values (if session timeout enabled)
+  fail:
+    msg:
+      - "=========================================="
+      - "    INVALID SESSION TIMEOUT VALUE"
+      - "=========================================="
+      - "{{ item.name }} value '{{ item.value }}' is invalid"
+      - "Timeout values must be between 1 and 1440 minutes (24 hours)"
+      - "Current values:"
+      - "  - Browser session timeout: {{ browser_session_timeout | default(15) }}"
+      - "  - Shell timeout: {{ shell_timeout | default(15) }}"
+      - "=========================================="
+  when:
+    - session_timeout_enabled | default(true) | bool
+    - item.value is defined
+    - (item.value | int < 1 or item.value | int > 1440)
+  loop:
+    - { name: "browser_session_timeout", value: "{{ browser_session_timeout | default(15) }}" }
+    - { name: "shell_timeout", value: "{{ shell_timeout | default(15) }}" }
+
+- name: Validate password policy settings (if password policy enabled)
+  fail:
+    msg:
+      - "=========================================="
+      - "    INVALID PASSWORD POLICY CONFIGURATION"
+      - "=========================================="
+      - "Password minimum length must be between 8 and 32 characters"
+      - "Password require categories must be between 1 and 4"
+      - "Current values:"
+      - "  - Minimum length: {{ password_min_length | default(15) }}"
+      - "  - Required categories: {{ password_require_categories | default(2) }}"
+      - "=========================================="
+  when:
+    - password_policy_enabled | default(true) | bool
+    - (password_min_length | default(15) | int < 8 or password_min_length | default(15) | int > 32) or
+      (password_require_categories | default(2) | int < 1 or password_require_categories | default(2) | int > 4)
+
+- name: Set default output directories
+  set_fact:
+    config_output_dir: "{{ config_output_dir | default('./reports/hardening') }}"
+    log_output_dir: "{{ log_output_dir | default('./logs') }}"
+    report_output_dir: "{{ report_output_dir | default('./reports') }}"
+
+- name: Create output directories
+  file:
+    path: "{{ item }}"
+    state: directory
+    mode: '0755'
+  loop:
+    - "{{ config_output_dir }}"
+    - "{{ log_output_dir }}"
+    - "{{ report_output_dir }}"
+  delegate_to: localhost
+
+- name: Set timestamp variable
+  set_fact:
+    timestamp: "{{ '%Y-%m-%d_%H-%M-%S' | strftime }}"
+  when: timestamp is not defined
+
+- name: Display role configuration summary
+  debug:
+    msg:
+      - "=========================================="
+      - "    FMC HARDENING CONFIGURATION"
+      - "=========================================="
       - "FMC Host: {{ fmc_host }}"
-      - "Hardening Enabled: {{ hardening_enabled }}"
-      - "Apply Hardening: {{ apply_hardening }}"
-      - "Validate Compliance: {{ validate_compliance }}"
-      - "Timestamp: {{ timestamp }}"
+      - "Hardening Enabled: {{ hardening_enabled | default(true) }}"
+      - "Apply Hardening: {{ apply_hardening | default(false) }}"
+      - "Validate Compliance: {{ validate_compliance | default(false) }}"
+      - "Hostname Validation: {{ hostname_format_validation | default(true) }}"
+      - "Warning Banner: {{ warning_banner_enabled | default(true) }}"
+      - "Management ACL: {{ management_acl_enabled | default(true) }}"
+      - "Session Timeout: {{ session_timeout_enabled | default(true) }}"
+      - "Password Policy: {{ password_policy_enabled | default(true) }}"
+      - "Health Monitoring: {{ health_monitoring_enabled | default(true) }}"
+      - "Compliance Report: {{ compliance_report_enabled | default(true) }}"
+      - "Config Output: {{ config_output_dir }}"
+      - "Log Output: {{ log_output_dir }}"
+      - "Debug Mode: {{ debug_mode | default(false) }}"
+      - "=========================================="
+  run_once: true
+
+#==============================================================================
+# FMC CONNECTION AND DOMAIN SETUP
+#==============================================================================
+
+# - name: Get Domain Information
+#   cisco.fmcansible.fmc_configuration:
+#     operation: getAllDomain
+#   register: domain_response
+#   failed_when: false
 
 - name: Get Domain Information
-  cisco.fmcansible.fmc_configuration:
-    operation: getAllDomain
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_platform/v1/info/domain"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200, 401, 403, 500]
   register: domain_response
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
   failed_when: false
 
 - name: Debug Domain Response

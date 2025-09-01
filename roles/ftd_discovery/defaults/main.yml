@@ -1,0 +1,53 @@
+---
+# FTD Discovery Role - Default Variables
+# This role discovers and validates FTD devices managed by FMC
+
+# Discovery Settings
+ftd_discovery_enabled: true
+discover_all_devices: true
+device_health_check: true
+device_connectivity_test: true
+ftd_detailed_query: true
+ftd_max_concurrent_operations: 5
+ftd_query_timeout: 30
+fail_on_ftd_discovery_error: false
+ftd_json_output: false
+
+# Device Filtering
+include_unmanaged_devices: false
+include_disabled_devices: false
+device_type_filter: "ftd"
+
+# Discovery Results (set during execution)
+ftd_devices_found: false
+ftd_discovery_successful: false
+ftd_device_count: 0
+ftd_total_devices: 0
+ftd_connected_devices: 0
+ftd_disconnected_devices: 0
+ftd_query_failed_devices: 0
+ftd_devices_list: []
+ftd_device_inventory: []
+ftd_connected_device_list: []
+ftd_disconnected_device_list: []
+ftd_devices_details: {}
+
+# Operational Settings
+ftd_bulk_operations_enabled: false
+ftd_parallel_operations: false
+
+# Health Check Settings
+check_device_status: true
+check_policy_deployment: true
+check_ha_status: true
+check_license_status: true
+
+# Connectivity Test Settings
+ping_test_enabled: true
+ssh_test_enabled: false
+snmp_test_enabled: false
+
+# Reporting
+generate_device_inventory: true
+device_inventory_format: "json"
+

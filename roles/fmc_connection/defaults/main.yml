@@ -1,17 +1,35 @@
 ---
-# FMC Connection Role Default Variables
+# FMC Connection Role - Default Variables
+# This role tests FMC connectivity and authentication
 
-# Connection settings
+# Connection Testing Settings
+connection_test_enabled: true
+fail_on_connection_error: false
+connection_timeout: 30
+max_connection_retries: 3
+connection_retry_delay: 5
 api_timeout: 30
 api_retries: 3
 api_delay: 5
 validate_certs: false
 fmc_protocol: "https"
 
-# Behavior settings
-fail_on_connection_error: true
+# Authentication Settings
+auth_token_cache: true
+auth_token_refresh: true
+fmc_json_output: false
 
-# Default values for connection test results
+# Health Check Settings
+fmc_health_check: true
+system_info_collect: true
+
+# Connection Test Results (set during execution)
+fmc_accessible: false
+fmc_authenticated: false
 fmc_connection_test_passed: false
+fmc_version: ""
+fmc_build: ""
+fmc_system_info: {}
 fmc_auth_token: ""
 fmc_domain_uuid: ""
+auth_headers: {}

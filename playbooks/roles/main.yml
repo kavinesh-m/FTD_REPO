@@ -8,23 +8,43 @@
     - role: fmc_common
       tags: ['always', 'common']
 
-    # Connection test
+    # FMC Connection test
     - role: fmc_connection
       tags: ['connection', 'test']
       vars:
         fail_on_connection_error: true
 
-    # Hardening configuration extraction
+    # FTD Device discovery and connectivity testing
+    - role: ftd_discovery
+      tags: ['ftd', 'discovery', 'test']
+      when: discover_ftd_devices | default(true) | bool
+
+    # FMC Hardening configuration extraction
     - role: fmc_hardening
-      tags: ['hardening', 'config']
+      tags: ['fmc', 'hardening', 'config']
       when: extract_hardening_config | default(true) | bool
+
+    # FTD Security Hardening
+    - role: ftd_hardening
+      tags: ['ftd', 'hardening', 'security']
+      when: 
+        - ftd_hardening_enabled | default(true) | bool
+        - ftd_devices_found | default(false) | bool
 
     # Rule management (time-based)
     - role: fmc_rule_management
-      tags: ['rules', 'management']
+      tags: ['rules', 'management', 'fmc']
       when: 
         - manage_rules | default(true) | bool
         - rule_expiry_check_enabled | default(true) | bool
+
+    # FTD Rule management (device-level)
+    - role: ftd_rule_management
+      tags: ['ftd', 'rules', 'management']
+      when: 
+        - manage_ftd_rules | default(true) | bool
+        - ftd_devices_found | default(false) | bool
+        - ftd_rule_management_enabled | default(true) | bool
 
     # Packet tracer
     - role: fmc_packet_tracer

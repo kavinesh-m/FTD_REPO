@@ -1,0 +1,1448 @@
+---
+# FTD Rule Management - Device-level Rule Management Tasks
+# Manages access rules, NAT rules, and policy enforcement on FTD devices
+
+# ====================================
+# VARIABLE VALIDATION FRAMEWORK
+# ====================================
+
+- name: Test FMC Authentication
+  uri:
+    url: "{{ fmc_protocol }}://{{ ansible_host }}/api/fmc_platform/v1/auth/generatetoken"
+    method: POST
+    user: "{{ fmc_username }}"
+    password: "{{ fmc_password }}"
+    validate_certs: "{{ validate_certs }}"
+    force_basic_auth: yes
+    timeout: "{{ api_timeout | default(30) }}"
+  register: auth_test
+  failed_when: false
+
+- name: Set FMC Token
+  set_fact:
+    fmc_auth_token: "{{ auth_test.x_auth_access_token }}"
+  when:
+    - auth_test.status == 204
+
+- name: Validate Required Variables - FMC Connection
+  fail:
+    msg: |
+      ❌ CRITICAL: Missing required FMC connection variable: {{ item.var }}
+
+      📋 Required FMC Connection Variables:
+      {% for req_var in required_variables %}
+      {% if hostvars[inventory_hostname][req_var.var] is not defined %}
+      ❌ {{ req_var.var }} - {{ req_var.desc }}
+      {% else %}
+      ✅ {{ req_var.var }} - {{ req_var.desc }}
+      {% endif %}
+      {% endfor %}
+
+      🔧 How to fix:
+      1. Set {{ item.var }} in your inventory file:
+         [fmc_servers]
+         your_fmc ansible_host=X.X.X.X fmc_host=X.X.X.X {{ item.var }}=your_value
+
+      2. Or set in group_vars/all.yml:
+         {{ item.var }}: "your_value"
+
+      3. Or pass as extra vars:
+         ansible-playbook -e "{{ item.var }}=your_value" your_playbook.yml
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+  when: hostvars[inventory_hostname][item.var] is not defined
+  loop:
+    - { var: "fmc_host", desc: "FMC management IP address" }
+    - { var: "fmc_username", desc: "FMC API username" }
+    - { var: "fmc_password", desc: "FMC API password" }
+  loop_control:
+    loop_var: item
+  vars:
+    required_variables:
+      - { var: "fmc_host", desc: "FMC management IP address" }
+      - { var: "fmc_username", desc: "FMC API username" }
+      - { var: "fmc_password", desc: "FMC API password" }
+
+- name: Validate Required Variables - Output Directories
+  fail:
+    msg: |
+      ❌ CRITICAL: Missing required output directory variable: {{ item.var }}
+
+      📋 Required Output Directory Variables:
+      {% for req_var in required_output_vars %}
+      {% if hostvars[inventory_hostname][req_var.var] is not defined %}
+      ❌ {{ req_var.var }} - {{ req_var.desc }}
+      {% else %}
+      ✅ {{ req_var.var }} - {{ req_var.desc }}
+      {% endif %}
+      {% endfor %}
+
+      🔧 How to fix:
+      1. Set {{ item.var }} in your playbook:
+         vars:
+           {{ item.var }}: "/path/to/{{ item.var | regex_replace('_', '-') }}"
+
+      2. Or in group_vars/all.yml:
+         {{ item.var }}: "/opt/fmc-ansible/{{ item.var | regex_replace('_', '-') }}"
+
+      📖 These directories will be created automatically if they don't exist
+  when: hostvars[inventory_hostname][item.var] is not defined
+  loop:
+    - { var: "report_output_dir", desc: "Directory for FTD rule management reports" }
+    - { var: "config_output_dir", desc: "Directory for FTD rule management configs" }
+    - { var: "log_output_dir", desc: "Directory for FTD rule management logs" }
+  loop_control:
+    loop_var: item
+  vars:
+    required_output_vars:
+      - { var: "report_output_dir", desc: "Directory for FTD rule management reports" }
+      - { var: "config_output_dir", desc: "Directory for FTD rule management configs" }
+      - { var: "log_output_dir", desc: "Directory for FTD rule management logs" }
+
+- name: Validate Optional Variables - FTD Device Configuration
+  fail:
+    msg: |
+      ❌ CONFIGURATION ERROR: Invalid ftd_device_config structure
+
+      Current value: {{ ftd_device_config | default('undefined') }}
+      Expected type: Dictionary (object)
+
+      🔧 How to fix:
+      Set ftd_device_config as a dictionary in your configuration:
+
+      ftd_device_config:
+        auto_discover: true
+        connection_timeout: 30
+        connection_retries: 3
+        verify_connectivity: true
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+
+      Valid structure:
+      ftd_device_config:
+        auto_discover: boolean (default: true)
+        connection_timeout: integer (default: 30)
+        connection_retries: integer (default: 3)
+        verify_connectivity: boolean (default: true)
+  when:
+    - ftd_device_config is defined
+    - ftd_device_config is not mapping
+
+- name: Validate Optional Variables - Rule Management Configuration
+  fail:
+    msg: |
+      ❌ CONFIGURATION ERROR: Invalid rule_management structure
+
+      Current value: {{ rule_management | default('undefined') }}
+      Expected type: Dictionary (object)
+
+      🔧 How to fix:
+      Set rule_management as a dictionary in your configuration:
+
+      rule_management:
+        expiry_check_enabled: true
+        auto_disable_expired: false
+        auto_delete_expired: false
+        backup_before_modification: true
+        validate_rule_syntax: true
+        enforce_naming_convention: true
+        check_rule_conflicts: true
+        optimize_rule_order: false
+        remove_duplicate_rules: true
+        consolidate_similar_rules: false
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+  when:
+    - rule_management is defined
+    - rule_management is not mapping
+
+- name: Validate Optional Variables - Expiry Detection Configuration
+  fail:
+    msg: |
+      ❌ CONFIGURATION ERROR: Invalid expiry_detection structure
+
+      Current value: {{ expiry_detection | default('undefined') }}
+      Expected type: Dictionary (object)
+
+      🔧 How to fix:
+      Set expiry_detection as a dictionary in your configuration:
+
+      expiry_detection:
+        check_metadata_expiry: true
+        metadata_expiry_field: "expiry_date"
+        check_name_based_expiry: true
+        name_date_patterns:
+          - regex: '(\d{4}-\d{2}-\d{2})'
+            format: "%Y-%m-%d"
+        check_comment_expiry: true
+        comment_keywords:
+          - "expires"
+          - "expiry"
+          - "temporary"
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+  when:
+    - expiry_detection is defined
+    - expiry_detection is not mapping
+
+- name: Validate Optional Variables - Rule Categories Configuration
+  fail:
+    msg: |
+      ❌ CONFIGURATION ERROR: Invalid rule_categories structure
+
+      Current value: {{ rule_categories | default('undefined') }}
+      Expected type: Dictionary (object)
+
+      🔧 How to fix:
+      Set rule_categories as a dictionary in your configuration:
+
+      rule_categories:
+        access_rules:
+          enabled: true
+          priority: 1
+        nat_rules:
+          enabled: true
+          priority: 2
+        vpn_rules:
+          enabled: false
+          priority: 3
+        quality_of_service_rules:
+          enabled: false
+          priority: 4
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+  when:
+    - rule_categories is defined
+    - rule_categories is not mapping
+
+- name: Validate Optional Variables - Backup Settings Configuration
+  fail:
+    msg: |
+      ❌ CONFIGURATION ERROR: Invalid backup_settings structure
+
+      Current value: {{ backup_settings | default('undefined') }}
+      Expected type: Dictionary (object)
+
+      🔧 How to fix:
+      Set backup_settings as a dictionary in your configuration:
+
+      backup_settings:
+        enabled: true
+        backup_format: "json"
+        compress_backups: true
+        retention_days: 90
+        backup_location: "{{ config_output_dir }}/rule_backups"
+        backup_before_disable: true
+        backup_before_delete: true
+        backup_modified_rules: true
+        include_metadata: true
+        include_statistics: true
+        include_hit_counts: true
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+  when:
+    - backup_settings is defined
+    - backup_settings is not mapping
+
+- name: Validate Optional Variables - Deployment Configuration
+  fail:
+    msg: |
+      ❌ CONFIGURATION ERROR: Invalid deployment structure
+
+      Current value: {{ deployment | default('undefined') }}
+      Expected type: Dictionary (object)
+
+      🔧 How to fix:
+      Set deployment as a dictionary in your configuration:
+
+      deployment:
+        validate_before_deploy: true
+        test_deploy_first: false
+        deploy_immediately: false
+        deploy_during_maintenance_window: true
+        maintenance_window:
+          start_hour: 2
+          end_hour: 4
+          timezone: "UTC"
+          days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]
+        require_manual_confirmation: false
+        send_deployment_notifications: true
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+  when:
+    - deployment is defined
+    - deployment is not mapping
+
+- name: Validate Optional Variables - Reporting and Logging Configuration
+  fail:
+    msg: |
+      ❌ CONFIGURATION ERROR: Invalid {{ item.name }} structure
+
+      Current value: {{ item.value | default('undefined') }}
+      Expected type: Dictionary (object)
+
+      🔧 How to fix for {{ item.name }}:
+      {{ item.example }}
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+  when:
+    - item.value is defined
+    - item.value is not mapping
+  loop:
+    - name: "reporting"
+      value: "{{ reporting | default(omit) }}"
+      example: |
+        reporting:
+          generate_reports: true
+          report_formats: ["json"]
+          include_rule_details: true
+          include_hit_statistics: true
+          include_performance_metrics: true
+          include_compliance_status: true
+          email_reports: false
+          email_recipients: []
+    - name: "logging"
+      value: "{{ logging | default(omit) }}"
+      example: |
+        logging:
+          log_level: "INFO"
+          log_all_operations: true
+          log_rule_changes: true
+          log_deployment_status: true
+          rotate_logs: true
+          log_retention_days: 30
+          max_log_size_mb: 100
+  loop_control:
+    loop_var: item
+
+- name: Validate Optional Variables - Advanced Configuration
+  fail:
+    msg: |
+      ❌ CONFIGURATION ERROR: Invalid {{ item.name }} structure
+
+      Current value: {{ item.value | default('undefined') }}
+      Expected type: Dictionary (object)
+
+      🔧 How to fix for {{ item.name }}:
+      {{ item.example }}
+
+      📖 See roles/ftd_rule_management/defaults/main.yml for all available options
+  when:
+    - item.value is defined
+    - item.value is not mapping
+  loop:
+    - name: "compliance"
+      value: "{{ compliance | default(omit) }}"
+      example: |
+        compliance:
+          enforce_compliance_rules: true
+          compliance_frameworks: ["PCI-DSS", "SOX", "HIPAA"]
+          require_business_justification: false
+          require_approval_workflow: false
+          track_rule_ownership: true
+          maintain_audit_trail: true
+          audit_rule_modifications: true
+          audit_access_attempts: true
+    - name: "performance"
+      value: "{{ performance | default(omit) }}"
+      example: |
+        performance:
+          batch_size: 50
+          parallel_processing: false
+          max_concurrent_operations: 3
+          analyze_rule_usage: true
+          recommend_optimizations: true
+          auto_optimize_order: false
+          cache_rule_data: true
+          cache_duration_minutes: 30
+    - name: "notifications"
+      value: "{{ notifications | default(omit) }}"
+      example: |
+        notifications:
+          email_enabled: false
+          slack_enabled: false
+          webhook_enabled: false
+          notify_on_expiry: true
+          notify_on_errors: true
+          notify_on_completion: true
+          notify_on_conflicts: true
+          include_summary: true
+          include_details: false
+          include_recommendations: true
+    - name: "security"
+      value: "{{ security | default(omit) }}"
+      example: |
+        security:
+          require_authentication: true
+          role_based_access: true
+          encrypt_backups: false
+          encrypt_reports: false
+          mask_sensitive_data: true
+          log_access_attempts: true
+          monitor_rule_changes: true
+          alert_on_suspicious_activity: true
+  loop_control:
+    loop_var: item
+
+- name: Display FTD Rule Management Validation Summary
+  debug:
+    msg:
+      - "✅ FTD RULE MANAGEMENT VALIDATION COMPLETED"
+      - "=================================================="
+      - "Required Variables Status:"
+      - "  FMC Host: {{ '✅ Set' if fmc_host is defined else '❌ Missing' }}"
+      - "  FMC Username: {{ '✅ Set' if fmc_username is defined else '❌ Missing' }}"
+      - "  FMC Password: {{ '✅ Set' if fmc_password is defined else '❌ Missing' }}"
+      - "  Report Output Dir: {{ '✅ Set' if report_output_dir is defined else '❌ Missing' }}"
+      - "  Config Output Dir: {{ '✅ Set' if config_output_dir is defined else '❌ Missing' }}"
+      - "  Log Output Dir: {{ '✅ Set' if log_output_dir is defined else '❌ Missing' }}"
+      - ""
+      - "Optional Configuration Status:"
+      - "  FTD Device Config: {{ '✅ Valid' if ftd_device_config is mapping else ('⚠️  Invalid Type' if ftd_device_config is defined else '📝 Using Defaults') }}"
+      - "  Rule Management: {{ '✅ Valid' if rule_management is mapping else ('⚠️  Invalid Type' if rule_management is defined else '📝 Using Defaults') }}"
+      - "  Expiry Detection: {{ '✅ Valid' if expiry_detection is mapping else ('⚠️  Invalid Type' if expiry_detection is defined else '📝 Using Defaults') }}"
+      - "  Rule Categories: {{ '✅ Valid' if rule_categories is mapping else ('⚠️  Invalid Type' if rule_categories is defined else '📝 Using Defaults') }}"
+      - "  Backup Settings: {{ '✅ Valid' if backup_settings is mapping else ('⚠️  Invalid Type' if backup_settings is defined else '📝 Using Defaults') }}"
+      - "  Deployment Config: {{ '✅ Valid' if deployment is mapping else ('⚠️  Invalid Type' if deployment is defined else '📝 Using Defaults') }}"
+      - "  Reporting Config: {{ '✅ Valid' if reporting is mapping else ('⚠️  Invalid Type' if reporting is defined else '📝 Using Defaults') }}"
+      - "  Logging Config: {{ '✅ Valid' if logging is mapping else ('⚠️  Invalid Type' if logging is defined else '📝 Using Defaults') }}"
+      - "  Compliance Config: {{ '✅ Valid' if compliance is mapping else ('⚠️  Invalid Type' if compliance is defined else '📝 Using Defaults') }}"
+      - "  Performance Config: {{ '✅ Valid' if performance is mapping else ('⚠️  Invalid Type' if performance is defined else '📝 Using Defaults') }}"
+      - "  Notifications Config: {{ '✅ Valid' if notifications is mapping else ('⚠️  Invalid Type' if notifications is defined else '📝 Using Defaults') }}"
+      - "  Security Config: {{ '✅ Valid' if security is mapping else ('⚠️  Invalid Type' if security is defined else '📝 Using Defaults') }}"
+      - ""
+      - "🚀 All validations passed! Starting FTD rule management operations..."
+      - "=================================================="
+  when: debug_mode | default(false) | bool
+
+# ====================================
+# FTD RULE MANAGEMENT OPERATIONS
+# ====================================
+
+- name: Get all Network objects (for built-in 'any' object)
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/object/networks?limit=1000"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  register: all_network_objects_result
+  when:
+    - fmc_auth_token is defined
+    - domain_uuid is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Validate Network Objects API Response
+  fail:
+    msg: |
+      ❌ CRITICAL: Network objects API call failed
+
+      API Response Status: {{ all_network_objects_result.status | default('undefined') }}
+      Error Details: {{ all_network_objects_result.msg | default('No error message available') }}
+
+      🔧 Troubleshooting Steps:
+      1. Verify FMC authentication token is valid
+      2. Check network connectivity to FMC host: {{ fmc_host }}
+      3. Ensure domain UUID is correct: {{ domain_uuid }}
+      4. Check FMC API permissions for network objects access
+
+      📖 This error prevents rule management operations from proceeding
+  when:
+    - all_network_objects_result is defined
+    - all_network_objects_result.status is defined
+    - all_network_objects_result.status != 200
+
+- name: Debug Network Objects API Response Structure
+  debug:
+    msg:
+      - "Network Objects API Response Analysis:"
+      - "  Status Code: {{ all_network_objects_result.status | default('undefined') }}"
+      - "  Response Size: {{ all_network_objects_result.json | length if all_network_objects_result.json is defined else 'undefined' }} bytes"
+      - "  Has 'items' key: {{ 'items' in all_network_objects_result.json if all_network_objects_result.json is defined else false }}"
+      - "  Items count: {{ all_network_objects_result.json['items'] | length if (all_network_objects_result.json is defined and 'items' in all_network_objects_result.json) else 'undefined' }}"
+      - "  Response keys: {{ all_network_objects_result.json.keys() | list if all_network_objects_result.json is defined else 'undefined' }}"
+  when:
+    - debug_mode | default(false) | bool
+    - all_network_objects_result is defined
+
+- name: Validate Network Objects Response Structure
+  fail:
+    msg: |
+      ❌ CRITICAL: Invalid network objects API response structure
+
+      Expected: JSON response with 'items' array
+      Actual: {{ 'No JSON response' if all_network_objects_result.json is not defined else ('No items array' if 'items' not in all_network_objects_result.json else 'Items array is empty') }}
+
+      Response Details:
+        Status: {{ all_network_objects_result.status | default('undefined') }}
+        JSON Keys: {{ all_network_objects_result.json.keys() | list if all_network_objects_result.json is defined else 'No JSON response' }}
+
+      🔧 This indicates an FMC API issue or authentication problem
+  when:
+    - all_network_objects_result is defined
+    - all_network_objects_result.status == 200
+    - (all_network_objects_result.json is not defined or 'items' not in all_network_objects_result.json or all_network_objects_result.json['items'] | length == 0)
+
+- name: List Available Network Object Names (Debug)
+  debug:
+    msg:
+      - "Available Network Objects (first 20):"
+      - "{{ all_network_objects_result.json['items'][:20] | map(attribute='name') | list }}"
+      - "Total Network Objects: {{ all_network_objects_result.json['items'] | length }}"
+  when:
+    - debug_mode | default(false) | bool
+    - all_network_objects_result is defined
+    - all_network_objects_result.json is defined
+    # - 'items' in all_network_objects_result.json
+    - all_network_objects_result.json['items'] | length > 0
+
+- name: Find built-in 'any' Network object UUID
+  set_fact:
+    any_network_object_uuid: "{{ item.id }}"
+  loop: "{{ all_network_objects_result.json['items'] | default([]) }}"
+  when:
+    - all_network_objects_result is defined
+    - all_network_objects_result.json is defined
+    - all_network_objects_result.json['items'] is defined
+    - item.name is defined
+    - item.name == 'any'
+
+- name: Find built-in 'any-ipv4' Network object UUID (fallback)
+  set_fact:
+    any_network_object_uuid: "{{ item.id }}"
+  loop: "{{ all_network_objects_result.json['items'] | default([]) }}"
+  when:
+    - all_network_objects_result is defined
+    - all_network_objects_result.json is defined
+    - all_network_objects_result.json['items'] is defined
+    - item.name is defined
+    - item.name == 'any-ipv4'
+    - any_network_object_uuid is not defined
+
+- name: Validate Required Network Object Found
+  fail:
+    msg: |
+      ❌ CRITICAL: Required network object not found
+
+      Missing: Built-in 'any' or 'any-ipv4' network object
+
+      Available Objects (first 10):
+      {{ all_network_objects_result.json['items'][:10] | map(attribute='name') | list if (all_network_objects_result.json is defined and 'items' in all_network_objects_result.json) else 'Unable to list objects' }}
+
+      🔧 Resolution Options:
+      1. Check if FMC has built-in 'any' or 'any-ipv4' objects
+      2. Create a custom 'any' network object (0.0.0.0/0)
+      3. Update the playbook to use a different default object
+
+      📖 This object is required for test rule creation and rule management operations
+  when:
+    - all_network_objects_result is defined
+    - all_network_objects_result.status == 200
+    - any_network_object_uuid is not defined
+
+- name: Debug Selected Network Object
+  debug:
+    msg:
+      - "Selected Network Object Details:"
+      - "  Name: {{ selected_object.name }}"
+      - "  UUID: {{ any_network_object_uuid }}"
+      - "  Type: {{ selected_object.type | default('Network') }}"
+  vars:
+    selected_object: "{{ all_network_objects_result.json['items'] | selectattr('id', 'equalto', any_network_object_uuid) | first }}"
+  when:
+    - debug_mode | default(false) | bool
+    - any_network_object_uuid is defined
+    - all_network_objects_result is defined
+    - all_network_objects_result.json is defined
+    # - 'items' in all_network_objects_result.json
+
+- name: Create Test FTD Access Rule (for lifecycle test)
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ connected_ftd_devices[0].accessPolicy.id }}/accessrules"
+    method: POST
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      type: "AccessRule"
+      name: "TEST_EXPIRED_RULE_{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+      action: "ALLOW"
+      enabled: true
+      sourceNetworks:
+        objects:
+          - id: "{{ any_network_object_uuid }}"
+            type: "Network"
+      destinationNetworks:
+        objects:
+          - id: "{{ any_network_object_uuid }}"
+            type: "Network"
+      sourcePorts: {}
+      destinationPorts: {}
+      description: "Test rule for lifecycle automation. expires: 2000-01-01"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  register: test_rule_create_result
+  when:
+    - create_test_rule | default(true) | bool
+    - connected_ftd_devices is defined
+    - connected_ftd_devices | length > 0
+    - fmc_auth_token is defined
+    - any_network_object_uuid is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Initialize FTD Rule Management
+  set_fact:
+    ftd_rule_results: "{{ ftd_rule_management_results }}"
+    current_epoch: "{{ lookup('pipe', 'date +%s') | int }}"
+    processed_devices: []
+    all_ftd_rules: []
+    expired_ftd_rules: []
+    disabled_ftd_rules: []
+    deleted_ftd_rules: []
+    backed_up_rules: []
+    rule_conflicts: []
+    optimization_suggestions: []
+
+- name: Validate FTD Rule Management Prerequisites
+  fail:
+    msg: "FTD rule management is disabled. Set ftd_rule_management_enabled to true to proceed."
+  when: not (ftd_rule_management_enabled | default(true) | bool)
+
+- name: Display FTD Rule Management Configuration
+  debug:
+    msg:
+      - "FTD Rule Management Configuration:"
+      - "  Dry Run Mode: {{ ftd_rule_management_dry_run | default(false) }}"
+      - "  Auto-disable Expired Rules: {{ rule_management.auto_disable_expired | default(true) }}"
+      - "  Auto-delete Expired Rules: {{ rule_management.auto_delete_expired | default(false) }}"
+      - "  Backup Before Modification: {{ rule_management.backup_before_modification | default(true) }}"
+      - "  Validate Rule Syntax: {{ rule_management.validate_rule_syntax | default(true) }}"
+  when: debug_mode | default(false) | bool
+
+- name: Get Domain Information via REST API (Primary Method)
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_platform/v1/info/domain"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+    status_code: [200, 401, 403, 500]
+  register: domain_response_primary
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Set Domain Response from Primary Method
+  set_fact:
+    domain_response: >-
+      {{
+        {'response': {'items': domain_response_primary.json['items']}}
+        if 'items' in domain_response_primary.json
+        else {'response': {'items': [domain_response_primary.json]}}
+      }}
+  when:
+    - domain_response_primary is defined
+    - domain_response_primary.status == 200
+    - domain_response_primary.json is defined
+
+- name: Set Domain Response from Module Method
+  set_fact:
+    domain_response: "{{ domain_response_module }}"
+  when:
+    - domain_response is not defined
+    - domain_response_module is defined
+    - domain_response_module is succeeded
+    - domain_response_module.response is defined
+
+- name: Set Domain UUID
+  set_fact:
+    domain_uuid: "{{ domain_response.response['items'][0].uuid }}"
+  when: 
+    - domain_response.response is defined
+    - domain_response.response['items'] is defined
+    - domain_response.response['items'] | length > 0
+
+- name: Validate Domain Access
+  fail:
+    msg: "Failed to obtain domain information from FMC for FTD access"
+  when: domain_uuid is not defined or domain_uuid == ""
+
+- name: Discover FTD Devices via REST API
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  register: ftd_devices_response
+  when:
+    - ftd_device_config.auto_discover | default(true) | bool
+    - fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Debug fmc_auth_token
+  debug:
+    msg: "FMC Auth Token: {{ fmc_auth_token | default('undefined') }}"
+
+- name: Discover FTD Devices via REST API (fallback)
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  register: ftd_devices_fallback
+  when:
+    - ftd_device_config.auto_discover | default(true) | bool
+    - (ftd_devices_response is failed or ftd_devices_response.response is not defined)
+    - fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+
+- name: Set FTD Devices Response from Fallback
+  set_fact:
+    ftd_devices_response: "{{ {'response': ftd_devices_fallback.json} }}"
+  when:
+    - ftd_devices_fallback is defined
+    - ftd_devices_fallback is succeeded
+    - ftd_devices_fallback.json is defined
+
+- name: Filter Active FTD Devices (Assessment Safe)
+  set_fact:
+    active_ftd_devices: >-
+      {{ ftd_devices_response.response['items'] | selectattr('type', 'equalto', 'Device') | select('reject', 'deviceDetails' not in item) | selectattr('deviceDetails.regStatus', 'equalto', 'COMPLETED') | list
+         if (ftd_devices_response.response['items'] | selectattr('deviceDetails', 'defined') | list | length > 0)
+         else (ftd_devices_response.response['items'] | selectattr('type', 'equalto', 'Device') | list) }}
+  when:
+    - ftd_devices_response is defined
+    - ftd_devices_response.response is defined
+    - ftd_devices_response.response['items'] is defined
+
+- name: Display Discovered FTD Devices
+  debug:
+    msg:
+      - "Discovered FTD Devices:"
+      - "{{ active_ftd_devices | map(attribute='name') | list }}"
+  when: 
+    - debug_mode | default(false) | bool
+    - active_ftd_devices is defined
+
+- name: Validate FTD Device Availability
+  fail:
+    msg: "No active FTD devices found for rule management"
+  when: 
+    - active_ftd_devices is not defined or active_ftd_devices | length == 0
+    - ftd_device_config.auto_discover | default(true) | bool
+
+# - name: Test FTD Device Connectivity
+#   cisco.fmcansible.fmc_configuration:
+#     operation: getDevice
+#     path_params:
+#       domainUUID: "{{ domain_uuid }}"
+#       objectId: "{{ item.id }}"
+#   loop: "{{ active_ftd_devices | default([]) }}"
+#   register: connectivity_test
+#   failed_when: false
+#   when: ftd_device_config.verify_connectivity | default(true) | bool
+#   retries: "{{ api_retries | default(3) }}"
+#   delay: "{{ api_delay | default(5) }}"
+
+- name: Debug fmc_auth_token
+  debug:
+    msg: "FMC Auth Token: {{ fmc_auth_token | default('undefined') }}"
+  when: debug_mode | default(false) | bool
+
+- name: Test FTD Device Connectivity via REST API (fallback)
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords/{{ item.id }}"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  loop: "{{ active_ftd_devices | default([]) }}"
+  register: connectivity_test
+  when:
+    - ftd_device_config.verify_connectivity | default(true) | bool
+    - fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Merge Connectivity Test Results
+  set_fact:
+    connectivity_test_merged: "{{ connectivity_test }}"
+  when:
+    - connectivity_test is defined
+    - connectivity_test is succeeded
+    - (connectivity_test.results | selectattr('response', 'defined') | list | length) == (active_ftd_devices | length)
+
+# - name: Combine Primary and Fallback Connectivity Results
+#   set_fact:
+#     connectivity_test_merged:
+#       results: "{{ (connectivity_test.results | selectattr('response', 'defined') | list) +
+#                   (connectivity_test_fallback.results | selectattr('json', 'defined') | map('combine', {'response': item.json}) | list) }}"
+#   when:
+#     - connectivity_test is defined
+#     - connectivity_test_fallback is defined
+#     - connectivity_test_merged is not defined
+
+- name: Filter Connected FTD Devices
+  set_fact:
+    connected_ftd_devices: "{{ connectivity_test_merged.results | selectattr('response', 'defined') | map(attribute='item') | list }}"
+  when:
+    - connectivity_test_merged is defined
+    - ftd_device_config.verify_connectivity | default(true) | bool
+
+- name: Use All Discovered Devices if Connectivity Check Disabled
+  set_fact:
+    connected_ftd_devices: "{{ active_ftd_devices }}"
+  when: not (ftd_device_config.verify_connectivity | default(true) | bool)
+
+- name: Ensure Connected FTD Devices is Set After Fallback
+  set_fact:
+    connected_ftd_devices: "{{ active_ftd_devices }}"
+  when:
+    - connected_ftd_devices is not defined
+    - active_ftd_devices is defined
+    - active_ftd_devices | length > 0
+
+- name: Fetch Access Policy for Each Connected FTD Device
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/devices/devicerecords/{{ item.id }}"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  loop: "{{ connected_ftd_devices }}"
+  register: device_access_policy_results
+  when:
+    - connected_ftd_devices is defined
+    - connected_ftd_devices | length > 0
+    - fmc_auth_token is defined
+    - domain_uuid is defined
+
+- name: Attach Access Policy to Connected FTD Devices
+  set_fact:
+    connected_ftd_devices: >-
+      {{ connected_ftd_devices | zip(device_access_policy_results.results | map(attribute='json')) | map('combine') | list }}
+  when:
+    - device_access_policy_results is defined
+    - device_access_policy_results.results is defined
+    - device_access_policy_results.results | length == connected_ftd_devices | length
+
+- name: Create Test FTD Access Rule (for lifecycle test)
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ connected_ftd_devices[0].accessPolicy.id }}/accessrules"
+    method: POST
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      type: "AccessRule"
+      name: "TEST_EXPIRED_RULE_{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
+      action: "ALLOW"
+      enabled: true
+      sourceNetworks:
+        objects:
+          - id: "{{ any_network_object_uuid }}"
+            type: "Network"
+      destinationNetworks:
+        objects:
+          - id: "{{ any_network_object_uuid }}"
+            type: "Network"
+      sourcePorts: {}
+      destinationPorts: {}
+      description: "Test rule for lifecycle automation. expires: 2000-01-01"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  register: test_rule_create_result
+  when:
+    - create_test_rule | default(true) | bool
+    - connected_ftd_devices is defined
+    - connected_ftd_devices | length > 0
+    - connected_ftd_devices[0].accessPolicy is defined
+    - connected_ftd_devices[0].accessPolicy.id is defined
+    - fmc_auth_token is defined
+    - domain_uuid is defined
+    - any_network_object_uuid is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Store Created Test Rule Information
+  set_fact:
+    created_test_rule: "{{ test_rule_create_result.json }}"
+  when:
+    - test_rule_create_result is defined
+    - test_rule_create_result is not skipped
+    - test_rule_create_result.status is defined
+    - test_rule_create_result.status == 201
+    - test_rule_create_result.json is defined
+
+- name: Get Access Policies for FTD Devices
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  register: ftd_access_policies
+  when: fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Get Access Rules for Each Device Policy
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.accessPolicy.id }}/accessrules?limit=1000"
+    method: GET
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  loop: "{{ connected_ftd_devices | default([]) }}"
+  register: ftd_device_rules
+  when:
+    - item.accessPolicy is defined
+    - item.accessPolicy.id is defined
+    - fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Merge Device Rules Results
+  set_fact:
+    ftd_device_rules_merged: "{{ ftd_device_rules }}"
+  when:
+    - ftd_device_rules is defined
+    - ftd_device_rules is succeeded
+
+- name: Debug Test Rule Creation Result
+  debug:
+    msg:
+      - "Test Rule Creation Status:"
+      - "  Success: {{ test_rule_create_result.status == 201 if (test_rule_create_result is defined and test_rule_create_result is not skipped and test_rule_create_result.status is defined) else 'Not attempted' }}"
+      - "  Rule ID: {{ test_rule_create_result.json.id if (test_rule_create_result is defined and test_rule_create_result is not skipped and test_rule_create_result.json is defined) else 'N/A' }}"
+      - "  Rule Name: {{ test_rule_create_result.json.name if (test_rule_create_result is defined and test_rule_create_result is not skipped and test_rule_create_result.json is defined) else 'N/A' }}"
+      - "  Description: {{ test_rule_create_result.json.description if (test_rule_create_result is defined and test_rule_create_result is not skipped and test_rule_create_result.json is defined and test_rule_create_result.json.description is defined) else 'N/A' }}"
+  when:
+    - debug_mode | default(false) | bool
+    - test_rule_create_result is defined
+
+- name: Handle API Failures for Device Rules Fetching
+  debug:
+    msg:
+      - "⚠️  WARNING: Failed to fetch rules for some devices"
+      - "Failed API calls:"
+      - "{{ ftd_device_rules.results | selectattr('status', 'ne', 200) | map(attribute='item.name') | list }}"
+      - "Error details:"
+      - "{{ ftd_device_rules.results | selectattr('status', 'ne', 200) | map(attribute='json.error.messages') | list }}"
+  when:
+    - ftd_device_rules is defined
+    - ftd_device_rules.results is defined
+    - (ftd_device_rules.results | selectattr('status', 'ne', 200) | list | length) > 0
+
+- name: Debug Output of Fetched Device Rules
+  debug:
+    msg:
+      - "Device Rules Fetch Summary:"
+      - "  Total Devices: {{ ftd_device_rules.results | length if ftd_device_rules.results is defined else 0 }}"
+      - "  Successful API Calls: {{ (ftd_device_rules.results | selectattr('status', 'equalto', 200) | list | length) if ftd_device_rules.results is defined else 0 }}"
+      - "  Failed API Calls: {{ (ftd_device_rules.results | selectattr('status', 'ne', 200) | list | length) if ftd_device_rules.results is defined else 0 }}"
+      - "  Devices with Rules: {{ (ftd_device_rules.results | selectattr('status', 'equalto', 200) | selectattr('json.items', 'defined') | map(attribute='item.name') | list) if ftd_device_rules.results is defined else [] }}"
+  when:
+    - debug_mode | default(false) | bool
+    - ftd_device_rules is defined
+
+- name: Process and Collect All FTD Rules and Build Device-to-Rules and Device Metadata Map
+  set_fact:
+    all_ftd_rules: "{{ all_ftd_rules + (item.json['items'] | default([]) | map('combine', {
+        'metadata': {
+          'device': {
+            'name': item.item.name,
+            'id': item.item.id | default('')
+          },
+          'policy': {
+            'name': (item.item.accessPolicy.name | default('')),
+            'id': (item.item.accessPolicy.id | default(''))
+          }
+        }
+      }) | list) }}"
+    processed_devices: "{{ processed_devices + [item.item.name] }}"
+    device_rules_map: >-
+      {{ (device_rules_map | default({})) | combine({ item.item.name: (
+        item.json['items'] | default([]) | map('combine', {
+          'device': item.item.name,
+          'policy': (item.item.accessPolicy.name | default('')),
+          'policyId': (item.item.accessPolicy.id | default('')),
+          'metadata': {
+            'device': {
+              'name': item.item.name,
+              'id': item.item.id | default('')
+            },
+            'policy': {
+              'name': (item.item.accessPolicy.name | default('')),
+              'id': (item.item.accessPolicy.id | default(''))
+            }
+          }
+        }) | list
+      ) }) }}
+    device_details_map: >-
+      {{ (device_details_map | default({})) | combine({ item.item.name: {
+        'id': item.item.id | default(''),
+        'name': item.item.name | default(''),
+        'model': item.item.model | default(''),
+        'version': item.item.sw_version | default(''),
+        'regStatus': item.item.deviceDetails.regStatus | default(''),
+        'accessPolicy': item.item.accessPolicy.name | default(''),
+        'accessPolicyId': item.item.accessPolicy.id | default('')
+      } }) }}
+  loop: "{{ ftd_device_rules.results | default([]) }}"
+  loop_control:
+    loop_var: item
+  when:
+    - item.json is defined
+    - item.json['items'] is defined
+    - item.status == 200
+
+- name: Store Per-Device Summary Statistics
+  set_fact:
+    device_summary_stats: >-
+      {{ (device_summary_stats | default({})) | combine({ item.key: {
+        'total_rules': item.value | length,
+        'enabled_rules': (item.value | selectattr('enabled', 'defined') | selectattr('enabled', 'equalto', true) | list | length),
+        'disabled_rules': (item.value | selectattr('enabled', 'defined') | selectattr('enabled', 'equalto', false) | list | length),
+        'rules_with_unknown_status': (item.value | rejectattr('enabled', 'defined') | list | length),
+        'rules_by_action': (item.value | selectattr('action', 'defined') | groupby('action')),
+        'rules_by_type': (item.value | groupby('type')),
+        'overly_permissive_rules': (
+          item.value | selectattr('action', 'defined')
+                     | selectattr('action', 'equalto', 'ALLOW')
+                     | selectattr('sourceNetworks.objects', 'defined')
+                     | selectattr('destinationNetworks.objects', 'defined')
+                     | selectattr('sourceNetworks.objects', 'length', 1)
+                     | selectattr('destinationNetworks.objects', 'length', 1)
+                     | selectattr('sourceNetworks.objects.0.name', 'defined')
+                     | selectattr('destinationNetworks.objects.0.name', 'defined')
+                     | selectattr('sourceNetworks.objects.0.name', 'equalto', 'any')
+                     | selectattr('destinationNetworks.objects.0.name', 'equalto', 'any')
+                     | list
+        ),
+        'test_rules': (
+          item.value | selectattr('name', 'defined')
+                     | selectattr('name', 'match', '^TEST_.*')
+                     | list
+        ),
+        'expired_test_rules': (
+          item.value | selectattr('name', 'defined')
+                     | selectattr('name', 'match', '^TEST_EXPIRED_RULE_.*')
+                     | list
+        )
+      } }) }}
+  loop: "{{ device_rules_map | dict2items }}"
+  loop_control:
+    label: "{{ item.key }}"
+  when:
+    - device_rules_map is defined
+    - device_rules_map is mapping
+
+- name: Update Device Processing Count
+  set_fact:
+    ftd_rule_results: "{{ ftd_rule_results | combine({'devices_processed': processed_devices | length}) }}"
+
+- name: Update Rules Analysis Count
+  set_fact:
+    ftd_rule_results: "{{ ftd_rule_results | combine({'rules_analyzed': all_ftd_rules | length}) }}"
+
+- name: Identify Rules with Metadata Expiry
+  set_fact:
+    expired_ftd_rules: "{{ expired_ftd_rules + [item] }}"
+  loop: "{{ all_ftd_rules | default([]) }}"
+  when: 
+    - expiry_detection.check_metadata_expiry | default(true) | bool
+    - item.metadata is defined
+    - item.metadata[expiry_detection.metadata_expiry_field | default('expiry_date')] is defined
+    - (item.metadata[expiry_detection.metadata_expiry_field | default('expiry_date')] | int) < current_epoch
+
+- name: Identify Rules with Name-based Expiry
+  set_fact:
+    expired_ftd_rules: "{{ expired_ftd_rules + [rule] }}"
+  loop: "{{ all_ftd_rules | default([]) }}"
+  loop_control:
+    loop_var: rule
+  vars:
+    name_patterns: "{{ expiry_detection.name_date_patterns | default([]) }}"
+    matching_patterns: "{{ name_patterns | selectattr('regex', 'defined') | selectattr('regex', 'match', rule.name) | list }}"
+  when:
+    - expiry_detection.check_name_based_expiry | default(true) | bool
+    - rule.name is defined
+    - matching_patterns | length > 0
+  failed_when: false
+
+- name: Identify Rules with Comment-based Expiry Indicators
+  set_fact:
+    expired_ftd_rules: "{{ expired_ftd_rules + [item] }}"
+  loop: "{{ all_ftd_rules | default([]) }}"
+  when: 
+    - expiry_detection.check_comment_expiry | default(true) | bool
+    - item.description is defined
+    - expiry_detection.comment_keywords | default([]) | select('in', item.description | lower) | list | length > 0
+
+- name: Remove Duplicate Expired Rules
+  set_fact:
+    expired_ftd_rules: "{{ expired_ftd_rules | unique(attribute='id') }}"
+
+- name: Update Expired Rules Count
+  set_fact:
+    ftd_rule_results: "{{ ftd_rule_results | combine({'rules_expired': expired_ftd_rules | length}) }}"
+
+- name: Create Backup Directory
+  file:
+    path: "{{ backup_settings.backup_location | default(config_output_dir + '/rule_backups') }}"
+    state: directory
+    mode: '0755'
+  delegate_to: localhost
+  when: 
+    - backup_settings.enabled | default(true) | bool
+    - expired_ftd_rules | length > 0
+
+- name: Backup Rules Before Modification
+  copy:
+    content: "{{ {'rules': expired_ftd_rules, 'devices': processed_devices, 'timestamp': timestamp, 'metadata': {'backup_reason': 'pre_modification', 'rule_count': expired_ftd_rules | length}} | to_nice_json }}"
+    dest: "{{ backup_settings.backup_location | default(config_output_dir + '/rule_backups') }}/ftd_rules_backup_{{ timestamp }}.json"
+    mode: '0644'
+  delegate_to: localhost
+  when: 
+    - backup_settings.enabled | default(true) | bool
+    - backup_settings.backup_before_disable | default(true) | bool
+    - expired_ftd_rules | length > 0
+
+- name: Update Backed Up Rules Count
+  set_fact:
+    ftd_rule_results: "{{ ftd_rule_results | combine({'rules_backed_up': expired_ftd_rules | length}) }}"
+  when: 
+    - backup_settings.enabled | default(true) | bool
+    - expired_ftd_rules | length > 0
+
+- name: Disable Expired FTD Rules (Dry Run)
+  debug:
+    msg: "DRY RUN: Would disable rule '{{ item.name }}' ({{ item.id }}) on device {{ item.metadata.device.name | default('unknown') }}"
+  loop: "{{ expired_ftd_rules }}"
+  when:
+    - ftd_rule_management_dry_run | default(false) | bool
+    - rule_management.auto_disable_expired | default(true) | bool
+    - expired_ftd_rules | length > 0
+
+- name: Simulate Disabling Expired FTD Rules (Mock Mode)
+  set_fact:
+    disabled_ftd_rules: "{{ disabled_ftd_rules + [item] }}"
+  loop: "{{ expired_ftd_rules }}"
+  when:
+    - mock_mode | default(false) | bool
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+    - rule_management.auto_disable_expired | default(true) | bool
+    - expired_ftd_rules | length > 0
+
+- name: Disable Expired FTD Rules
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.metadata.policy.id }}/accessrules/{{ item.id }}"
+    method: PUT
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ item.id }}"
+      name: "{{ item.name }}"
+      enabled: false
+      action: "{{ item.action }}"
+      sourceNetworks: "{{ item.sourceNetworks | default({}) }}"
+      destinationNetworks: "{{ item.destinationNetworks | default({}) }}"
+      sourcePorts: "{{ item.sourcePorts | default({}) }}"
+      destinationPorts: "{{ item.destinationPorts | default({}) }}"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  loop: "{{ expired_ftd_rules }}"
+  register: disable_results
+  when:
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+    - not (mock_mode | default(false) | bool)
+    - rule_management.auto_disable_expired | default(true) | bool
+    - expired_ftd_rules | length > 0
+    - fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Disable Expired FTD Rules
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.metadata.policy.id }}/accessrules/{{ item.id }}"
+    method: PUT
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    body_format: json
+    body:
+      id: "{{ item.id }}"
+      name: "{{ item.name }}"
+      enabled: false
+      action: "{{ item.action }}"
+      sourceNetworks: "{{ item.sourceNetworks | default({}) }}"
+      destinationNetworks: "{{ item.destinationNetworks | default({}) }}"
+      sourcePorts: "{{ item.sourcePorts | default({}) }}"
+      destinationPorts: "{{ item.destinationPorts | default({}) }}"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  loop: "{{ expired_ftd_rules }}"
+  register: disable_results
+  when:
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+    - rule_management.auto_disable_expired | default(true) | bool
+    - expired_ftd_rules | length > 0
+    - fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Merge Disable Results
+  set_fact:
+    disable_results_merged: "{{ disable_results }}"
+  when:
+    - disable_results is defined
+    - disable_results is succeeded
+    - (disable_results.results | selectattr('response', 'defined') | list | length) == (expired_ftd_rules | length)
+
+- name: Use Fallback Disable Results
+  set_fact:
+    disable_results_merged:
+      results: "{{ disable_results_fallback.results | map('combine', {'response': item.json, 'item': item.item}) | list }}"
+  when:
+    - disable_results_fallback is defined
+    - disable_results_fallback is succeeded
+    - disable_results_merged is not defined
+
+- name: Combine Primary and Fallback Disable Results
+  set_fact:
+    disable_results_merged:
+      results: "{{ (disable_results.results | selectattr('response', 'defined') | list) +
+                  (disable_results_fallback.results | selectattr('json', 'defined') | map('combine', {'response': item.json}) | list) }}"
+  when:
+    - disable_results is defined
+    - disable_results_fallback is defined
+    - disable_results_merged is not defined
+
+- name: Track Successfully Disabled Rules
+  set_fact:
+    disabled_ftd_rules: "{{ disabled_ftd_rules + [item.item] }}"
+  loop: "{{ disable_results.results | default([]) }}"
+  when: 
+    - disable_results is defined
+    - item.response is defined
+
+- name: Update Disabled Rules Count
+  set_fact:
+    ftd_rule_results: "{{ ftd_rule_results | combine({'rules_disabled': disabled_ftd_rules | length}) }}"
+
+- name: Delete Expired FTD Rules (Dry Run)
+  debug:
+    msg: "DRY RUN: Would delete rule '{{ item.name }}' ({{ item.id }}) on device {{ item.metadata.device.name | default('unknown') }}"
+  loop: "{{ expired_ftd_rules }}"
+  when:
+    - ftd_rule_management_dry_run | default(false) | bool
+    - rule_management.auto_delete_expired | default(false) | bool
+    - expired_ftd_rules | length > 0
+
+- name: Simulate Deleting Expired FTD Rules (Mock Mode)
+  set_fact:
+    deleted_ftd_rules: "{{ deleted_ftd_rules + [item] }}"
+  loop: "{{ expired_ftd_rules }}"
+  when:
+    - mock_mode | default(false) | bool
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+    - rule_management.auto_delete_expired | default(false) | bool
+    - expired_ftd_rules | length > 0
+
+- name: Delete Expired FTD Rules
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.metadata.policy.id }}/accessrules/{{ item.id }}"
+    method: DELETE
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  loop: "{{ expired_ftd_rules }}"
+  register: delete_results
+  when:
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+    - not (mock_mode | default(false) | bool)
+    - rule_management.auto_delete_expired | default(false) | bool
+    - expired_ftd_rules | length > 0
+    - fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Delete Expired FTD Rules
+  uri:
+    url: "https://{{ fmc_host }}/api/fmc_config/v1/domain/{{ domain_uuid }}/policy/accesspolicies/{{ item.metadata.policy.id }}/accessrules/{{ item.id }}"
+    method: DELETE
+    headers:
+      X-auth-access-token: "{{ fmc_auth_token }}"
+      Content-Type: "application/json"
+    validate_certs: "{{ validate_certs | default(false) }}"
+    timeout: "{{ api_timeout | default(30) }}"
+  loop: "{{ expired_ftd_rules }}"
+  register: delete_results
+  when:
+    - not (ftd_rule_management_dry_run | default(false) | bool)
+    - rule_management.auto_delete_expired | default(false) | bool
+    - expired_ftd_rules | length > 0
+    - fmc_auth_token is defined
+  retries: "{{ api_retries | default(3) }}"
+  delay: "{{ api_delay | default(5) }}"
+  failed_when: false
+
+- name: Merge Delete Results
+  set_fact:
+    delete_results_merged: "{{ delete_results }}"
+  when:
+    - delete_results is defined
+    - delete_results is succeeded
+    - (delete_results.results | selectattr('response', 'defined') | list | length) == (expired_ftd_rules | length)
+
+- name: Use Fallback Delete Results
+  set_fact:
+    delete_results_merged:
+      results: "{{ delete_results_fallback.results | map('combine', {'response': item.json, 'item': item.item}) | list }}"
+  when:
+    - delete_results_fallback is defined
+    - delete_results_fallback is succeeded
+    - delete_results_merged is not defined
+
+- name: Combine Primary and Fallback Delete Results
+  set_fact:
+    delete_results_merged:
+      results: "{{ (delete_results.results | selectattr('response', 'defined') | list) +
+                  (delete_results_fallback.results | selectattr('json', 'defined') | map('combine', {'response': item.json}) | list) }}"
+  when:
+    - delete_results is defined
+    - delete_results_fallback is defined
+    - delete_results_merged is not defined
+
+- name: Track Successfully Deleted Rules
+  set_fact:
+    deleted_ftd_rules: "{{ deleted_ftd_rules + [item.item] }}"
+  loop: "{{ delete_results.results | default([]) }}"
+  when: 
+    - delete_results is defined
+    - item.response is defined
+
+- name: Update Deleted Rules Count
+  set_fact:
+    ftd_rule_results: "{{ ftd_rule_results | combine({'rules_deleted': deleted_ftd_rules | length}) }}"
+
+- name: Calculate Execution Time
+  set_fact:
+    execution_end_time: "{{ lookup('pipe', 'date +%s') | int }}"
+    ftd_rule_results: "{{ ftd_rule_results | combine({'execution_time_seconds': (lookup('pipe', 'date +%s') | int) - (current_epoch | int)}) }}"
+
+- name: Generate FTD Rule Management Summary
+  set_fact:
+    ftd_rule_summary:
+      timestamp: "{{ timestamp }}"
+      fmc_host: "{{ fmc_host }}"
+      execution_mode: "{{ 'dry_run' if ftd_rule_management_dry_run else 'live' }}"
+      mock_mode: "{{ mock_mode | default(false) | bool }}"
+      devices_detected: "{{ active_ftd_devices | length if active_ftd_devices is defined else 0 }}"
+      devices_processed: "{{ processed_devices }}"
+      device_rule_details: >-
+        {{ device_rules_map | default({}) }}
+      device_summary_stats: >-
+        {{ device_summary_stats | default({}) }}
+      results: "{{ ftd_rule_results }}"
+      expired_rules_details: "{{ expired_ftd_rules | map(attribute='name') | list }}"
+      disabled_rules_details: >-
+        {{ disabled_ftd_rules | map(attribute='name') | list }}
+      deleted_rules_details: >-
+        {{ deleted_ftd_rules | map(attribute='name') | list }}
+      created_test_rule: "{{ created_test_rule | default({}) }}"
+      mock_operations:
+        enabled: "{{ mock_mode | default(false) | bool }}"
+        simulated_disabled_rules: "{{ disabled_ftd_rules | map(attribute='name') | list if mock_mode | default(false) | bool else [] }}"
+        simulated_deleted_rules: "{{ deleted_ftd_rules | map(attribute='name') | list if mock_mode | default(false) | bool else [] }}"
+        note: "These actions were simulated only. No real changes were made."
+      recommendations: "{{ optimization_suggestions }}"
+
+- name: Save FTD Rule Management Report
+  copy:
+    content: "{{ ftd_rule_summary | to_nice_json }}"
+    dest: "{{ report_output_dir }}/ftd_rule_management_{{ timestamp }}.json"
+    mode: '0644'
+  delegate_to: localhost
+  when: reporting.generate_reports | default(true) | bool
+
+- name: Log FTD Rule Management Activity
+  lineinfile:
+    path: "{{ log_output_dir }}/ftd_rule_management.log"
+    line: "{{ timestamp }} - FTD Rule Management on {{ fmc_host }} - Devices: {{ processed_devices | length }}, Rules Analyzed: {{ all_ftd_rules | length }}, Expired: {{ expired_ftd_rules | length }}, Disabled: {{ disabled_ftd_rules | length }}, Deleted: {{ deleted_ftd_rules | length }}"
+    create: yes
+    mode: '0644'
+  delegate_to: localhost
+  when: logging.log_all_operations | default(true) | bool
+
+- name: Display FTD Rule Management Summary
+  debug:
+    msg:
+      - "=========================================="
+      - "    FTD RULE MANAGEMENT COMPLETED"
+      - "=========================================="
+      - "Execution Mode: {{ 'DRY RUN' if ftd_rule_management_dry_run else 'LIVE' }}"
+      - "Mock Mode: {{ 'ENABLED' if mock_mode | default(false) | bool else 'DISABLED' }}"
+      - "FMC Host: {{ fmc_host }}"
+      - "Devices Processed: {{ processed_devices | length }}"
+      - "  Devices: {{ processed_devices | join(', ') }}"
+      - "Rules Summary:"
+      - "  Total Rules Analyzed: {{ all_ftd_rules | length }}"
+      - "  Expired Rules Found: {{ expired_ftd_rules | length }}"
+      - "  Rules Disabled: {{ disabled_ftd_rules | length }}{{ ' (SIMULATED)' if mock_mode | default(false) | bool else '' }}"
+      - "  Rules Deleted: {{ deleted_ftd_rules | length }}{{ ' (SIMULATED)' if mock_mode | default(false) | bool else '' }}"
+      - "  Rules Backed Up: {{ ftd_rule_results.rules_backed_up }}"
+      - "Execution Time: {{ ftd_rule_results.execution_time_seconds }} seconds"
+      - "Report saved to: {{ report_output_dir }}/ftd_rule_management_{{ timestamp }}.json"
+      - "=========================================="
+
+- name: Send Notifications (if enabled)
+  debug:
+    msg: "Notifications would be sent to configured channels"
+  when: 
+    - notifications.email_enabled | default(false) | bool or 
+      notifications.slack_enabled | default(false) | bool or 
+      notifications.webhook_enabled | default(false) | bool
+    - notifications.notify_on_completion | default(true) | bool
+
+- name: Update Global FTD Rule Management Results
+  set_fact:
+    ftd_rule_management_results: "{{ ftd_rule_results }}"
+

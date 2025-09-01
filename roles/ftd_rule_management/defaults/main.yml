@@ -1,0 +1,289 @@
+---
+# FTD Rule Management Role Default Variables
+# Manages FTD device-level access rules and policy enforcement
+
+# ================================
+# ROLE BEHAVIOR SETTINGS
+# ================================
+ftd_rule_management_enabled: true
+ftd_rule_management_dry_run: false
+mock_mode: false  # If true, simulate rule creation/deletion (no real changes)
+create_test_rule: false
+fail_on_rule_error: false
+debug_mode: false
+
+# ================================
+# API CONFIGURATION
+# ================================
+api_timeout: 30
+api_retries: 3
+api_delay: 5
+validate_certs: false
+ftd_protocol: "https"
+
+# ================================
+# FTD DEVICE CONNECTION
+# ================================
+ftd_device_config:
+  # FTD devices will be discovered via FMC or provided explicitly
+  auto_discover: true
+  connection_timeout: 30
+  connection_retries: 3
+  verify_connectivity: true
+
+# ================================
+# RULE MANAGEMENT SETTINGS
+# ================================
+rule_management:
+  # Rule expiry and lifecycle management
+  expiry_check_enabled: true
+  auto_disable_expired: false
+  auto_delete_expired: false
+  backup_before_modification: true
+  
+  # Rule validation and compliance
+  validate_rule_syntax: true
+  enforce_naming_convention: true
+  check_rule_conflicts: true
+  
+  # Performance and optimization
+  optimize_rule_order: false
+  remove_duplicate_rules: true
+  consolidate_similar_rules: false
+
+# ================================
+# RULE EXPIRY DETECTION
+# ================================
+expiry_detection:
+  # Metadata-based expiry (preferred method)
+  check_metadata_expiry: true
+  metadata_expiry_field: "expiry_date"
+  
+  # Name-based expiry detection
+  check_name_based_expiry: true
+  name_date_patterns:
+    - regex: '(\d{4}-\d{2}-\d{2})'
+      format: "%Y-%m-%d"
+    - regex: '(\d{2}/\d{2}/\d{4})'
+      format: "%m/%d/%Y"
+    - regex: '(\d{8})'
+      format: "%Y%m%d"
+  
+  # Comment-based expiry detection
+  check_comment_expiry: true
+  comment_keywords:
+    - "expires"
+    - "expiry"
+    - "temporary"
+    - "temp rule"
+    - "remove on"
+
+# ================================
+# RULE CATEGORIES AND TYPES
+# ================================
+rule_categories:
+  # Security rule types to manage
+  access_rules:
+    enabled: true
+    priority: 1
+    
+  nat_rules:
+    enabled: true
+    priority: 2
+    
+  vpn_rules:
+    enabled: false
+    priority: 3
+    
+  quality_of_service_rules:
+    enabled: false
+    priority: 4
+
+# ================================
+# RULE FILTERING AND SCOPE
+# ================================
+rule_filtering:
+  # Include/exclude rules based on criteria
+  include_disabled_rules: true
+  include_temporary_rules: true
+  
+  # Rule source filtering
+  exclude_system_rules: true
+  exclude_default_rules: true
+  
+  # Rule name filtering
+  exclude_name_patterns:
+    - "^SYSTEM_"
+    - "^DEFAULT_"
+    - "^AUTO_GENERATED_"
+  
+  include_name_patterns:
+    - "^TEMP_"
+    - "^TEMPORARY_"
+    - "_EXPIRES_"
+
+# ================================
+# RULE BACKUP AND ARCHIVAL
+# ================================
+backup_settings:
+  enabled: true
+  backup_format: "json"
+  compress_backups: true
+  retention_days: 90
+  backup_location: "{{ config_output_dir }}/rule_backups"
+  
+  # What to backup
+  backup_before_disable: true
+  backup_before_delete: true
+  backup_modified_rules: true
+  
+  # Backup metadata
+  include_metadata: true
+  include_statistics: true
+  include_hit_counts: true
+
+# ================================
+# RULE DEPLOYMENT SETTINGS
+# ================================
+deployment:
+  # Deployment validation
+  validate_before_deploy: true
+  test_deploy_first: false
+  
+  # Deployment timing
+  deploy_immediately: false
+  deploy_during_maintenance_window: true
+  maintenance_window:
+    start_hour: 2
+    end_hour: 4
+    timezone: "UTC"
+    days: ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday"]
+  
+  # Deployment confirmation
+  require_manual_confirmation: false
+  send_deployment_notifications: true
+
+# ================================
+# REPORTING AND LOGGING
+# ================================
+reporting:
+  # Report generation
+  generate_reports: true
+  report_formats: ["json", "html"]
+  
+  # Report content
+  include_rule_details: true
+  include_hit_statistics: true
+  include_performance_metrics: true
+  include_compliance_status: true
+  
+  # Report distribution
+  email_reports: false
+  email_recipients: []
+  
+logging:
+  # Logging configuration
+  log_level: "INFO"
+  log_all_operations: true
+  log_rule_changes: true
+  log_deployment_status: true
+  
+  # Log retention
+  rotate_logs: true
+  log_retention_days: 30
+  max_log_size_mb: 100
+
+# ================================
+# COMPLIANCE AND GOVERNANCE
+# ================================
+compliance:
+  # Regulatory compliance
+  enforce_compliance_rules: true
+  compliance_frameworks:
+    - "PCI-DSS"
+    - "SOX"
+    - "HIPAA"
+  
+  # Rule governance
+  require_business_justification: false
+  require_approval_workflow: false
+  track_rule_ownership: true
+  
+  # Audit requirements
+  maintain_audit_trail: true
+  audit_rule_modifications: true
+  audit_access_attempts: true
+
+# ================================
+# PERFORMANCE OPTIMIZATION
+# ================================
+performance:
+  # Batch processing
+  batch_size: 50
+  parallel_processing: false
+  max_concurrent_operations: 3
+  
+  # Rule optimization
+  analyze_rule_usage: true
+  recommend_optimizations: true
+  auto_optimize_order: false
+  
+  # Caching
+  cache_rule_data: true
+  cache_duration_minutes: 30
+
+# ================================
+# NOTIFICATION SETTINGS
+# ================================
+notifications:
+  # Notification channels
+  email_enabled: false
+  slack_enabled: false
+  webhook_enabled: false
+  
+  # Notification triggers
+  notify_on_expiry: true
+  notify_on_errors: true
+  notify_on_completion: true
+  notify_on_conflicts: true
+  
+  # Notification content
+  include_summary: true
+  include_details: false
+  include_recommendations: true
+
+# ================================
+# SECURITY SETTINGS
+# ================================
+security:
+  # Access control
+  require_authentication: true
+  role_based_access: true
+  
+  # Data protection
+  encrypt_backups: false
+  encrypt_reports: false
+  mask_sensitive_data: true
+  
+  # Audit and monitoring
+  log_access_attempts: true
+  monitor_rule_changes: true
+  alert_on_suspicious_activity: true
+
+# ================================
+# DEFAULT RESULTS TRACKING
+# ================================
+ftd_rule_management_results:
+  devices_processed: 0
+  rules_analyzed: 0
+  rules_expired: 0
+  rules_disabled: 0
+  rules_deleted: 0
+  rules_backed_up: 0
+  errors_encountered: 0
+  warnings_generated: 0
+  deployment_status: "not_started"
+  compliance_status: "unknown"
+  optimization_recommendations: []
+  execution_time_seconds: 0
+

@@ -1,0 +1,236 @@
+---
+# FTD Discovery and Connection Test Tasks using cisco.fmcansible collection
+
+- name: Validate FTD discovery prerequisites
+  assert:
+    that:
+      - fmc_domain_uuid is defined
+      - fmc_domain_uuid != ""
+      - fmc_domain_uuid | regex_search('^[a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12}$') or fmc_domain_uuid == "Global"
+      - ftd_query_timeout | default(30) | int >= 10 and ftd_query_timeout | default(30) | int <= 300
+      - ftd_max_concurrent_operations | default(5) | int >= 1 and ftd_max_concurrent_operations | default(5) | int <= 20
+    fail_msg: |
+      FTD discovery prerequisites validation failed:
+      - fmc_domain_uuid: {{ fmc_domain_uuid | default('UNDEFINED') }} (must be valid UUID or 'Global')
+      - ftd_query_timeout: {{ ftd_query_timeout | default(30) }} (must be 10-300 seconds)
+      - ftd_max_concurrent_operations: {{ ftd_max_concurrent_operations | default(5) }} (must be 1-20)
+    success_msg: "FTD discovery prerequisites validated successfully"
+
+- name: Validate FTD discovery configuration flags
+  assert:
+    that:
+      - ftd_detailed_query | default(true) | type_debug == "bool"
+      - ftd_json_output | default(false) | type_debug == "bool"
+      - fail_on_ftd_discovery_error | default(false) | type_debug == "bool"
+      - debug_mode | default(false) | type_debug == "bool"
+    fail_msg: |
+      FTD discovery configuration validation failed:
+      - ftd_detailed_query: {{ ftd_detailed_query | default(true) }} (must be boolean)
+      - ftd_json_output: {{ ftd_json_output | default(false) }} (must be boolean)
+      - fail_on_ftd_discovery_error: {{ fail_on_ftd_discovery_error | default(false) }} (must be boolean)
+      - debug_mode: {{ debug_mode | default(false) }} (must be boolean)
+    success_msg: "FTD discovery configuration validated successfully"
+
+- name: Verify FMC connection is established
+  fail:
+    msg: "FMC connection must be established before FTD discovery. Please run fmc_connection role first."
+  when: not (fmc_connection_test_passed | default(false))
+
+- name: Test Managed Device Access
+  cisco.fmcansible.fmc_configuration:
+    operation: getAllDevice
+    path_params:
+      domainUUID: "{{ fmc_domain_uuid }}"
+  register: managed_devices_test
+  failed_when: false
+
+- name: Debug Managed Devices Test
+  debug:
+    var: managed_devices_test
+  when: debug_mode | default(false) | bool
+
+- name: Display Managed Devices Test Results
+  debug:
+    msg:
+      - "FMC Managed Devices Test Results:"
+      - "Status: {{ 'SUCCESS' if managed_devices_test.response is defined else 'FAILED' }}"
+      - "Managed Devices Found: {{ managed_devices_test.response['items'] | length | default(0) }}"
+  when: managed_devices_test.response is defined
+
+- name: Display Managed Devices Test Failure
+  debug:
+    msg:
+      - "FMC Managed Devices Test Results:"
+      - "Status: FAILED"
+      - "Error: {{ managed_devices_test.msg | default('Managed devices query failed') }}"
+  when: managed_devices_test.response is not defined
+
+- name: List Managed FTD Devices
+  debug:
+    msg:
+      - "Device: {{ item.name }}"
+      - "  Type: {{ item.type | default('Unknown') }}"
+      - "  ID: {{ item.id | default('Unknown') }}"
+      - "  Links: {{ item.links.self | default('Unknown') }}"
+      - "  Note: Detailed device information requires individual device queries"
+  loop: "{{ managed_devices_test.response['items'] | default([]) }}"
+  when: 
+    - managed_devices_test.response is defined
+    - managed_devices_test.response['items'] | length > 0
+
+- name: Get Individual FTD Device Details
+  cisco.fmcansible.fmc_configuration:
+    operation: getDevice
+    path_params:
+      domainUUID: "{{ fmc_domain_uuid }}"
+      objectId: "{{ item.id }}"
+  register: individual_device_details
+  loop: "{{ managed_devices_test.response['items'] | default([]) }}"
+  when: 
+    - managed_devices_test.response is defined
+    - managed_devices_test.response['items'] | length > 0
+    - ftd_detailed_query | default(true)
+  failed_when: false
+  throttle: "{{ ftd_max_concurrent_operations | default(5) }}"
+  async: "{{ ftd_query_timeout | default(30) }}"
+  poll: 0
+
+- name: Wait for FTD device detail queries to complete
+  async_status:
+    jid: "{{ item.ansible_job_id }}"
+  register: ftd_detail_results
+  until: ftd_detail_results.finished
+  retries: "{{ (ftd_query_timeout | default(30) / 5) | int }}"
+  delay: 5
+  loop: "{{ individual_device_details.results | default([]) }}"
+  when: 
+    - individual_device_details is defined
+    - individual_device_details.results is defined
+    - ftd_detailed_query | default(true)
+
+- name: Debug Individual Device Details
+  debug:
+    var: ftd_detail_results
+  when: 
+    - debug_mode | default(false) | bool
+    - ftd_detail_results is defined
+
+- name: Display Individual FTD Device Status
+  debug:
+    msg:
+      - "Device: {{ item.item.item.name }}"
+      - "  Status: {{ 'SUCCESS' if item.response is defined else 'FAILED' }}"
+      - "  Connectivity: {{ item.response.healthStatus | default('Unknown') if item.response is defined else 'Unable to check' }}"
+      - "  Model: {{ item.response.model | default('Unknown') if item.response is defined else 'Unknown' }}"
+      - "  Software Version: {{ item.response.sw_version | default('Unknown') if item.response is defined else 'Unknown' }}"
+      - "  Management IP: {{ item.response.hostName | default('Unknown') if item.response is defined else 'Unknown' }}"
+      - "  Serial Number: {{ item.response.metadata.deviceSerialNumber | default('Unknown') if item.response is defined else 'Unknown' }}"
+      - "  FTD Mode: {{ item.response.ftdMode | default('Unknown') if item.response is defined else 'Unknown' }}"
+      - "  Health Message: {{ item.response.healthMessage | default('Unknown') if item.response is defined else 'Unknown' }}"
+      - "  Deployment Status: {{ item.response.deploymentStatus | default('Unknown') if item.response is defined else 'Unknown' }}"
+      - "  Access Policy: {{ item.response.accessPolicy.name | default('Unknown') if item.response is defined else 'Unknown' }}"
+      - "  License(s): {{ item.response.license_caps | join(', ') if item.response.license_caps is defined else 'Unknown' }}"
+      - "  Registration: {{ item.response.regKey | default('Not Available') if item.response is defined else 'Unknown' }}"
+  loop: "{{ ftd_detail_results.results | default([]) }}"
+  when: 
+    - ftd_detail_results is defined
+    - ftd_detail_results.results is defined
+    - ftd_detailed_query | default(true)
+
+- name: Check FTD Device Connectivity Status
+  debug:
+    msg:
+      - "FTD Device Connectivity Summary:"
+      - "Total Devices: {{ managed_devices_test.response['items'] | length | default(0) }}"
+      - "Connected Devices: {{ ftd_detail_results.results | selectattr('response', 'defined') | selectattr('response.healthStatus', 'defined') | selectattr('response.healthStatus', 'match', '^(NORMAL|GREEN)$') | list | length | default(0) if ftd_detail_results is defined and ftd_detailed_query else 'Detailed query disabled' }}"
+      - "Disconnected/Issues: {{ ftd_detail_results.results | selectattr('response', 'defined') | selectattr('response.healthStatus', 'defined') | rejectattr('response.healthStatus', 'match', '^(NORMAL|GREEN)$') | list | length | default(0) if ftd_detail_results is defined and ftd_detailed_query else 'Detailed query disabled' }}"
+      - "Query Failed: {{ ftd_detail_results.results | rejectattr('response', 'defined') | list | length | default(0) if ftd_detail_results is defined and ftd_detailed_query else 'Detailed query disabled' }}"
+  when: 
+    - managed_devices_test.response is defined
+    - managed_devices_test.response['items'] | length > 0
+
+- name: FTD Discovery Summary
+  debug:
+    msg:
+      - "=== FTD DISCOVERY SUMMARY ==="
+      - "FMC Host: {{ ansible_host }}"
+      - "Managed Devices Access: {{ 'PASS' if managed_devices_test.response is defined else 'FAIL' }}"
+      - "FTD Devices Found: {{ managed_devices_test.response['items'] | length | default(0) if managed_devices_test.response is defined else 'N/A' }}"
+      - "FTD Connected: {{ ftd_detail_results.results | selectattr('response', 'defined') | selectattr('response.healthStatus', 'defined') | selectattr('response.healthStatus', 'match', '^(NORMAL|GREEN)$') | list | length | default(0) if ftd_detail_results is defined and ftd_detailed_query else 'N/A' }}"
+      - "FTD Disconnected: {{ ftd_detail_results.results | selectattr('response', 'defined') | selectattr('response.healthStatus', 'defined') | rejectattr('response.healthStatus', 'match', '^(NORMAL|GREEN)$') | list | length | default(0) if ftd_detail_results is defined and ftd_detailed_query else 'N/A' }}"
+      - "Overall Status: {{ 'FTD DEVICES AVAILABLE' if (managed_devices_test.response is defined and managed_devices_test.response['items'] | length > 0) else 'NO FTD DEVICES FOUND' }}"
+
+- name: Set FTD discovery results
+  set_fact:
+    ftd_devices_found: "{{ managed_devices_test.response is defined and managed_devices_test.response['items'] | length > 0 }}"
+    ftd_total_devices: "{{ managed_devices_test.response['items'] | length | default(0) if managed_devices_test.response is defined else 0 }}"
+    ftd_connected_devices: "{{ ftd_detail_results.results | selectattr('response', 'defined') | selectattr('response.healthStatus', 'defined') | selectattr('response.healthStatus', 'match', '^(NORMAL|GREEN)$') | list | length | default(0) if ftd_detail_results is defined and ftd_detailed_query else 0 }}"
+    ftd_disconnected_devices: "{{ ftd_detail_results.results | selectattr('response', 'defined') | selectattr('response.healthStatus', 'defined') | rejectattr('response.healthStatus', 'match', '^(NORMAL|GREEN)$') | list | length | default(0) if ftd_detail_results is defined and ftd_detailed_query else 0 }}"
+    ftd_query_failed_devices: "{{ ftd_detail_results.results | rejectattr('response', 'defined') | list | length | default(0) if ftd_detail_results is defined and ftd_detailed_query else 0 }}"
+    ftd_device_inventory: "{{ managed_devices_test.response['items'] | default([]) if managed_devices_test.response is defined else [] }}"
+    ftd_connected_device_list: "{{ ftd_detail_results.results | selectattr('response', 'defined') | selectattr('response.healthStatus', 'defined') | selectattr('response.healthStatus', 'match', '^(NORMAL|GREEN)$') | map(attribute='response') | list if ftd_detail_results is defined and ftd_detailed_query else [] }}"
+    ftd_disconnected_device_list: "{{ ftd_detail_results.results | selectattr('response', 'defined') | selectattr('response.healthStatus', 'defined') | rejectattr('response.healthStatus', 'match', '^(NORMAL|GREEN)$') | map(attribute='response') | list if ftd_detail_results is defined and ftd_detailed_query else [] }}"
+
+- name: Set FTD operational flags
+  set_fact:
+    ftd_bulk_operations_enabled: "{{ ftd_connected_devices | int > 1 }}"
+    ftd_parallel_operations: "{{ ftd_connected_devices | int > ftd_max_concurrent_operations | int }}"
+
+- name: Display FTD device flags summary
+  debug:
+    msg:
+      - "=== FTD DEVICE FLAGS SUMMARY ==="
+      - "FTD Devices Found: {{ ftd_devices_found }}"
+      - "Total FTD Devices: {{ ftd_total_devices }}"
+      - "Connected FTD Devices: {{ ftd_connected_devices }}"
+      - "Disconnected FTD Devices: {{ ftd_disconnected_devices }}"
+      - "Query Failed Devices: {{ ftd_query_failed_devices }}"
+      - "Bulk Operations Enabled: {{ ftd_bulk_operations_enabled }}"
+      - "Parallel Operations Enabled: {{ ftd_parallel_operations }}"
+      - "Device Inventory Size: {{ ftd_device_inventory | length }}"
+      - "Connected Device List Size: {{ ftd_connected_device_list | length }}"
+      - "Disconnected Device List Size: {{ ftd_disconnected_device_list | length }}"
+  when: debug_mode | default(false) | bool
+
+- name: Generate FTD Discovery JSON Report
+  copy:
+    content: |
+      {
+        "ftd_discovery_report": {
+          "timestamp": "{{ lookup('pipe', 'date -u +%Y-%m-%dT%H:%M:%SZ') }}",
+          "fmc_host": "{{ ansible_host }}",
+          "test_results": {
+            "managed_devices_access": "{{ 'PASS' if managed_devices_test.response is defined else 'FAIL' }}",
+            "ftd_devices_found": {{ ftd_devices_found | to_json }},
+            "ftd_detailed_query_enabled": {{ ftd_detailed_query | default(true) | to_json }}
+          },
+          "summary": {
+            "total_devices": {{ ftd_total_devices }},
+            "connected_devices": {{ ftd_connected_devices }},
+            "disconnected_devices": {{ ftd_disconnected_devices }},
+            "query_failed_devices": {{ ftd_query_failed_devices }},
+            "connectivity_rate_percent": {{ (ftd_connected_devices | int / ftd_total_devices | int * 100) | round(1) if (ftd_total_devices | int) > 0 else 0 }},
+            "bulk_operations_enabled": {{ ftd_bulk_operations_enabled | to_json }},
+            "parallel_operations_enabled": {{ ftd_parallel_operations | to_json }}
+          },
+          "device_inventory": {{ ftd_device_inventory | to_json }},
+          "connected_devices": {{ ftd_connected_device_list | to_json }},
+          "disconnected_devices": {{ ftd_disconnected_device_list | to_json }},
+          "operational_flags": {
+            "ftd_devices_found": {{ ftd_devices_found | to_json }},
+            "ftd_bulk_operations_enabled": {{ ftd_bulk_operations_enabled | to_json }},
+            "ftd_parallel_operations": {{ ftd_parallel_operations | to_json }}
+          }
+        }
+      }
+    dest: "{{ report_output_dir | default('./') }}/ftd_discovery_{{ ansible_host }}_{{ lookup('pipe', 'date +%s') }}.json"
+  delegate_to: localhost
+  when: ftd_json_output | default(false) | bool
+
+- name: Fail if FTD discovery failed and strict mode enabled
+  fail:
+    msg: "FTD discovery failed or no devices found. Check FMC configuration and device registration."
+  when: 
+    - not ftd_devices_found
+    - fail_on_ftd_discovery_error | default(false) | bool
+
