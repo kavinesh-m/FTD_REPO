@@ -1,0 +1,1195 @@
+{
+  "created_test_rule": {},
+  "deleted_rules_details": [],
+  "device_rule_details": {
+    "ciscoftd01": [
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434438",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434438"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "Allow inside to outside",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434439",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434439"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250825184858",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434440",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434440"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250825185057",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434441",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434441"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250825185326",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434442",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434442"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250825190857",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434443",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434443"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250825192601",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434444",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434444"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250825192931",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434445",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434445"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250825193712",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268434446",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434446"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250825200605",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268435456",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435456"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250901160943",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268435457",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435457"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250901161422",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268435458",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435458"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250901162237",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268435459",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435459"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250901162420",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      },
+      {
+        "device": "ciscoftd01",
+        "id": "0050569B-DF62-0ed3-0000-000268435460",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435460"
+        },
+        "metadata": {
+          "device": {
+            "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+            "name": "ciscoftd01"
+          },
+          "policy": {
+            "id": "0050569b-df62-0ed3-0000-004294968945",
+            "name": "Basic policy"
+          }
+        },
+        "name": "TEST_EXPIRED_RULE_20250901163611",
+        "policy": "Basic policy",
+        "policyId": "0050569b-df62-0ed3-0000-004294968945",
+        "type": "AccessRule"
+      }
+    ]
+  },
+  "device_summary_stats": {
+    "ciscoftd01": {
+      "disabled_rules": 0,
+      "enabled_rules": 0,
+      "expired_test_rules": [
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434439",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434439"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825184858",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434440",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434440"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825185057",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434441",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434441"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825185326",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434442",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434442"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825190857",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434443",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434443"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825192601",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434444",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434444"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825192931",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434445",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434445"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825193712",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434446",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434446"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825200605",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435456",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435456"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901160943",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435457",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435457"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901161422",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435458",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435458"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901162237",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435459",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435459"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901162420",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435460",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435460"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901163611",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        }
+      ],
+      "overly_permissive_rules": [],
+      "rules_by_action": [],
+      "rules_by_type": [
+        [
+          "AccessRule",
+          [
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434438",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434438"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "Allow inside to outside",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434439",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434439"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250825184858",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434440",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434440"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250825185057",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434441",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434441"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250825185326",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434442",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434442"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250825190857",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434443",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434443"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250825192601",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434444",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434444"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250825192931",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434445",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434445"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250825193712",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268434446",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434446"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250825200605",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268435456",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435456"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250901160943",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268435457",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435457"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250901161422",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268435458",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435458"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250901162237",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268435459",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435459"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250901162420",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            },
+            {
+              "device": "ciscoftd01",
+              "id": "0050569B-DF62-0ed3-0000-000268435460",
+              "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435460"
+              },
+              "metadata": {
+                "device": {
+                  "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                  "name": "ciscoftd01"
+                },
+                "policy": {
+                  "id": "0050569b-df62-0ed3-0000-004294968945",
+                  "name": "Basic policy"
+                }
+              },
+              "name": "TEST_EXPIRED_RULE_20250901163611",
+              "policy": "Basic policy",
+              "policyId": "0050569b-df62-0ed3-0000-004294968945",
+              "type": "AccessRule"
+            }
+          ]
+        ]
+      ],
+      "rules_with_unknown_status": 14,
+      "test_rules": [
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434439",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434439"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825184858",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434440",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434440"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825185057",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434441",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434441"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825185326",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434442",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434442"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825190857",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434443",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434443"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825192601",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434444",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434444"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825192931",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434445",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434445"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825193712",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268434446",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268434446"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250825200605",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435456",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435456"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901160943",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435457",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435457"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901161422",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435458",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435458"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901162237",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435459",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435459"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901162420",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        },
+        {
+          "device": "ciscoftd01",
+          "id": "0050569B-DF62-0ed3-0000-000268435460",
+          "links": {
+            "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945/accessrules/0050569B-DF62-0ed3-0000-000268435460"
+          },
+          "metadata": {
+            "device": {
+              "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+              "name": "ciscoftd01"
+            },
+            "policy": {
+              "id": "0050569b-df62-0ed3-0000-004294968945",
+              "name": "Basic policy"
+            }
+          },
+          "name": "TEST_EXPIRED_RULE_20250901163611",
+          "policy": "Basic policy",
+          "policyId": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessRule"
+        }
+      ],
+      "total_rules": 14
+    }
+  },
+  "devices_detected": "1",
+  "devices_processed": [
+    "ciscoftd01"
+  ],
+  "disabled_rules_details": [],
+  "execution_mode": "live",
+  "expired_rules_details": [],
+  "fmc_host": "10.12.201.212",
+  "mock_mode": false,
+  "mock_operations": {
+    "enabled": false,
+    "note": "These actions were simulated only. No real changes were made.",
+    "simulated_deleted_rules": [],
+    "simulated_disabled_rules": []
+  },
+  "recommendations": [],
+  "results": {
+    "compliance_status": "unknown",
+    "deployment_status": "not_started",
+    "devices_processed": 1,
+    "errors_encountered": 0,
+    "execution_time_seconds": 12,
+    "optimization_recommendations": [],
+    "rules_analyzed": 14,
+    "rules_backed_up": 0,
+    "rules_deleted": 0,
+    "rules_disabled": 0,
+    "rules_expired": 0,
+    "warnings_generated": 0
+  },
+  "timestamp": "20250902103317"
+}
+

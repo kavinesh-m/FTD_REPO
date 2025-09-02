@@ -1,0 +1,51 @@
+{
+  "ftd_security_hardening_benchmark_report": {
+    "timestamp": "2025-09-02T10:34:27",
+    "fmc_host": "10.12.201.212",
+    "benchmark_info": {
+      "standard": "Security Hardening Benchmark for Cisco Firepower Devices",
+      "version": "Latest",
+      "implementation_method": "FMC API Operational Commands"
+    },
+    "hardening_summary": {
+      "policy_name": "FTD_Security_Hardening_Benchmark_Policy",
+      "target_devices": 0,
+      "compliance_score": 0.0,
+      "compliance_status": "NON-COMPLIANT",
+      "dry_run_mode": false
+    },
+    "benchmark_controls": {
+      "4.1.1_hostname_configured": false,
+      "4.3.1_ssh_access_configured": false,
+      "4.3.2_session_timeout_configured": false
+    },
+    "ssh_access_control": {
+      "enabled": true,
+      "allowed_networks_count": 1,
+      "allowed_networks": [
+        {
+          "network": "10.247.54.62",
+          "mask": "255.255.255.255",
+          "description": "H-Cloud Management Server"
+        }
+      ]
+    },
+    "session_timeouts": {
+      "enabled": true,
+      "browser_timeout_minutes": 15,
+      "shell_timeout_minutes": 15
+    },
+    "target_devices": [],
+    "verification_results": {
+      "verification_enabled": true,
+      "verification_passed": false
+    },
+    "full_hardening_results": {
+      "ssh_access_configured": false,
+      "session_timeout_configured": false,
+      "hostname_configured": false,
+      "verification_passed": false
+    }
+  }
+}
+

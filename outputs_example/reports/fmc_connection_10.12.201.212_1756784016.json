@@ -1,0 +1,261 @@
+{
+  "fmc_connection_report": {
+    "report_metadata": {
+      "report_version": "2.0",
+      "generated_timestamp": "2025-09-02T03:33:36Z",
+      "generated_by": "FMC Ansible Connection Test v2.0",
+      "target_fmc": "10.12.201.212",
+      "assessment_type": "Connection and Basic Security Assessment",
+      "report_id": "fmc_conn_10_12_201_212_1756784016",
+      "ansible_user": "admin",
+      "execution_environment": {
+        "ansible_version": "2.18.6",
+        "python_version": "Unknown",
+        "fmc_collection_version": "cisco.fmcansible"
+      }
+    },
+    "executive_summary": {
+      "overall_status": "READY FOR AUTOMATION",
+      "security_posture": "BASELINE_ESTABLISHED",
+      "connectivity_status": "OPERATIONAL",
+      "api_accessibility": "FULL_ACCESS",
+      "readiness_score": "100.0%",
+      "critical_issues": 0,
+      "recommendations_count": 0
+    },
+    "test_results": {
+      "connection_tests": {
+        "server_version_test": {
+          "status": "PASS",
+          "test_description": "FMC Server Version and Basic Connectivity Test",
+          "api_endpoint": "/api/fmc_config/v1/domain/{domainUUID}/info/serverversion",
+          "response_time_ms": "1",
+          "error_message": "None",
+          "security_implications": "Connection established - Authentication successful"
+        },
+        "domain_access_test": {
+          "status": "PASS",
+          "test_description": "FMC Domain Access and Authorization Test",
+          "api_endpoint": "/api/fmc_config/v1/domain",
+          "response_time_ms": "1",
+          "error_message": "None",
+          "security_implications": "Domain access verified - User has proper RBAC permissions"
+        },
+        "access_policy_test": {
+          "status": "PASS",
+          "test_description": "FMC Access Control Policy Discovery Test",
+          "api_endpoint": "/api/fmc_config/v1/domain/{domainUUID}/policy/accesspolicies",
+          "response_time_ms": "1",
+          "error_message": "Test skipped - Domain access failed",
+          "security_implications": "Policy access confirmed - Full security configuration assessment possible"
+        }
+      },
+      "performance_metrics": {
+        "total_test_duration_ms": "3",
+        "api_response_times": {
+          "server_version_avg_ms": "1",
+          "domain_access_avg_ms": "1",
+          "policy_access_avg_ms": "1"
+        },
+        "connection_quality": "EXCELLENT"
+      }
+    },
+    "fmc_system_information": {
+      "server_details": {
+        "fmc_version": "7.6.1 (build 291)",
+        "server_model": "Cisco Secure Firewall Management Center for VMWare 300",
+        "hostname": "fmc01",
+        "uptime": "3 days  19:52",
+        "management_ip": "10.12.201.212",
+        "api_version": "Unknown",
+        "build_number": "Unknown",
+        "product": "Unknown"
+      },
+      "version_analysis": {
+        "version_supported": "Yes",
+        "security_status": "Current",
+        "recommended_action": "No action required"
+      },
+      "management_access": {
+        "authentication_method": "Local User Database",
+        "session_timeout_configured": "30 seconds",
+        "max_retry_attempts": "3",
+        "connection_security": "HTTPS/TLS",
+        "api_access_level": "Full Configuration Access"
+      }
+    },
+    "domain_configuration": {
+      "primary_domain": {
+        "uuid": "e276abec-e0f2-11e3-8169-6d9ed49b625f",
+        "name": "Global",
+        "access_status": "Accessible"
+      },
+      "all_domains": [
+        {
+          "uuid": "e276abec-e0f2-11e3-8169-6d9ed49b625f",
+          "name": "Global",
+          "type": "Domain"
+        }
+      ],
+      "domain_summary": {
+        "total_domains": "1",
+        "accessible_domains": "1",
+        "multi_domain_deployment": "No",
+        "domain_architecture": "Single Domain"
+      }
+    },
+    "security_assessment": {
+      "access_control": {
+        "policy_discovery_status": "SUCCESS",
+        "policies_discovered": "3",
+        "policy_assessment_possible": "Yes",
+        "security_rule_analysis_ready": "True"
+      },
+      "compliance_indicators": {
+        "api_accessibility": "Compliant",
+        "authentication_working": "Compliant",
+        "authorization_proper": "Compliant",
+        "policy_visibility": "Compliant",
+        "overall_compliance_score": "75%"
+      },
+      "risk_assessment": {
+        "connectivity_risk": "LOW",
+        "access_control_risk": "LOW",
+        "automation_readiness_risk": "LOW",
+        "overall_risk_level": "LOW"
+      }
+    },
+    "operational_readiness": {
+      "automation_capabilities": {
+        "ansible_ready": "True",
+        "api_operations_available": "Full",
+        "configuration_management_ready": "Yes",
+        "policy_automation_ready": "Yes"
+      },
+      "next_steps": [
+        "Proceed with comprehensive security assessment",
+        "Review security hardening compliance requirements",
+        "Plan rule analysis and optimization tasks",
+        "Schedule regular connectivity validation"
+      ],
+      "recommended_monitoring": {
+        "connection_health_check_frequency": "Daily",
+        "api_performance_monitoring": "Recommended",
+        "access_policy_change_detection": "Available",
+        "version_compliance_tracking": "Monthly"
+      }
+    },
+    "troubleshooting_information": {
+      "connection_parameters": {
+        "target_host": "10.12.201.212",
+        "connection_timeout": "30 seconds",
+        "retry_attempts": "3",
+        "debug_mode": "True",
+        "fail_on_error": "True"
+      },
+      "error_details": {
+        "server_version_error": "No error",
+        "domain_access_error": "No error",
+        "policy_access_error": "No error"
+      },
+      "diagnostic_data": {
+        "dns_resolution_required": "No",
+        "connection_type": "HTTPS REST API",
+        "authentication_type": "Username/Password",
+        "user_agent": "Ansible cisco.fmcansible collection"
+      }
+    },
+    "raw_api_responses": {
+      "server_version_response": {
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_platform/v1/info/serverversion?offset=0&limit=25"
+        },
+        "items": [
+          {
+            "serverVersion": "7.6.1 (build 291)",
+            "vdbVersion": "build 410 ( 2025-07-15 15:20:09 )",
+            "sruVersion": "2025-08-27-001-vrt",
+            "lspVersion": "lsp-rel-20250825-1804",
+            "hostname": "fmc01",
+            "model": "Cisco Secure Firewall Management Center for VMWare 300",
+            "serialNumber": "None",
+            "uptime": "3 days  19:52",
+            "platform": "66",
+            "uuid": "6b8b5362-62e5-11f0-a5d0-bad5f40e7255",
+            "type": "ServerVersion"
+          }
+        ],
+        "paging": {
+          "offset": 0,
+          "limit": 25,
+          "count": 1,
+          "pages": 1
+        }
+      },
+      "domain_response": {
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_platform/v1/info/domain?offset=0&limit=25"
+        },
+        "items": [
+          {
+            "uuid": "e276abec-e0f2-11e3-8169-6d9ed49b625f",
+            "name": "Global",
+            "type": "Domain"
+          }
+        ],
+        "paging": {
+          "offset": 0,
+          "limit": 25,
+          "count": 1,
+          "pages": 1
+        }
+      },
+      "access_policy_response": {
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies?offset=0&limit=25"
+        },
+        "items": [
+          {
+            "type": "AccessPolicy",
+            "links": {
+              "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945"
+            },
+            "name": "Basic policy",
+            "id": "0050569B-DF62-0ed3-0000-004294968945"
+          },
+          {
+            "type": "AccessPolicy",
+            "links": {
+              "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004295173504"
+            },
+            "name": "LAB_ACP_1",
+            "id": "0050569B-DF62-0ed3-0000-004295173504"
+          },
+          {
+            "type": "AccessPolicy",
+            "links": {
+              "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004295173617"
+            },
+            "name": "LAB_ACP_2",
+            "id": "0050569B-DF62-0ed3-0000-004295173617"
+          }
+        ],
+        "paging": {
+          "offset": 0,
+          "limit": 25,
+          "count": 3,
+          "pages": 1
+        }
+      }
+    },
+    "report_summary": {
+      "total_tests_executed": "3",
+      "tests_passed": "3",
+      "tests_failed": "0",
+      "critical_failures": "0",
+      "overall_success_rate": "100.0%",
+      "assessment_completeness": "COMPLETE"
+    }
+  }
+}
+

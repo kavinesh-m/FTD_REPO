@@ -1,0 +1,394 @@
+{
+    "detailed_results": {
+        "access_control_compliance": {
+            "access_policies_available": true,
+            "applied": false,
+            "compliant": true,
+            "network_objects_available": true,
+            "recommendation": "Configure management access control with the following requirements:\n- Restrict management access to authorized networks only\n- Implement explicit deny for unauthorized networks\n- Configure separate ACLs for different management functions\n- Apply principle of least privilege for management access\n- Log all management access attempts for audit purposes\n",
+            "required_networks": [
+                {
+                    "action": "ALLOW",
+                    "description": "Administrative Management Network",
+                    "name": "MGMT_ADMIN_NETWORK",
+                    "network": "10.0.0.0/24"
+                },
+                {
+                    "action": "ALLOW",
+                    "description": "Monitoring and SNMP Network",
+                    "name": "MGMT_MONITORING_NETWORK",
+                    "network": "10.0.1.0/24"
+                },
+                {
+                    "action": "ALLOW",
+                    "description": "Backup and Archive Network",
+                    "name": "MGMT_BACKUP_NETWORK",
+                    "network": "10.0.2.0/24"
+                },
+                {
+                    "action": "DENY",
+                    "description": "Deny all other management access",
+                    "name": "DENY_ALL_OTHER",
+                    "network": "0.0.0.0/0"
+                }
+            ],
+            "standard_acls_available": true,
+            "status": true,
+            "total_access_policies": "3",
+            "total_network_objects": "16",
+            "total_standard_acls": "0"
+        },
+        "health_monitoring_compliance": {
+            "applied": false,
+            "compliant": false,
+            "critical_services_down": 0,
+            "domain_info_available": false,
+            "recommendation": "Monitor system health through available FMC platform APIs and configure manual health monitoring through GUI",
+            "server_version_available": true,
+            "status": false,
+            "upgrade_packages_available": true
+        },
+        "hostname_compliance": {
+            "compliant": false,
+            "current_hostname": "fmc01",
+            "expected_pattern": "^[A-Z]{2,4}-[A-Z]{2,4}-[A-Z0-9]{2,10}-[A-Z]{3,6}[0-9]{1,3}$",
+            "recommendation": "Hostname must follow H-Cloud naming convention: <DataCenterLocation>-<NetworkZone>-<Institution/cluster>-<DevicePurpose><Running Numbers>",
+            "status": false
+        },
+        "password_policy_compliance": {
+            "applied": false,
+            "compliant": true,
+            "local_users_available": true,
+            "policy_requirements": {
+                "lockout_duration_minutes": 30,
+                "lockout_threshold": 3,
+                "min_password_length": 12,
+                "password_expiry_days": 90,
+                "password_history_count": 5,
+                "require_lowercase": true,
+                "require_numbers": true,
+                "require_special_chars": true,
+                "require_uppercase": true
+            },
+            "realm_config_available": true,
+            "realm_count": "2",
+            "recommendation": "Configure strong password policy with the following requirements:\n- Minimum password length: 12 characters\n- Require uppercase letters: True\n- Require lowercase letters: True\n- Require numbers: True\n- Require special characters: True\n- Password history: 5 previous passwords\n- Password expiration: 90 days\n- Account lockout threshold: 3 failed attempts\n- Account lockout duration: 30 minutes\n",
+            "status": true,
+            "total_local_users": "0"
+        },
+        "session_timeout_compliance": {
+            "applied": false,
+            "compliant": false,
+            "current_timeout_minutes": "0",
+            "max_allowed_timeout_minutes": 30,
+            "recommendation": "Configure session timeout to 15 minutes or less for enhanced security",
+            "recommended_timeout_minutes": "15",
+            "sso_config_available": true,
+            "sso_servers_available": true,
+            "status": false
+        },
+        "warning_banner_compliance": {
+            "applied": false,
+            "compliant": true,
+            "current_hostname": "fmc01",
+            "current_version": "7.6.1 (build 291)",
+            "recommendation": "Configure warning banner with the following requirements:\n- Display legal disclaimer on login screen\n- Include authorized use only statement\n- Warn about monitoring and recording\n- State consent to monitoring clause\n- Include criminal prosecution warning\n",
+            "standard_banner_content": "THIS SYSTEM IS SOLELY FOR THE USE OF AUTHORIZED USERS FOR OFFICIAL PURPOSES. \nYOU HAVE NO EXPECTATION OF PRIVACY IN ITS USE AND TO ENSURE THAT THE SYSTEM \nIS FUNCTIONING PROPERLY, INDIVIDUALS USING THIS COMPUTER SYSTEM ARE SUBJECT \nTO HAVING ALL OF THEIR ACTIVITIES MONITORED AND RECORDED BY SYSTEM PERSONNEL. \n\nUSE OF THIS SYSTEM, AUTHORIZED OR UNAUTHORIZED, CONSTITUTES CONSENT TO \nMONITORING OF THIS SYSTEM. UNAUTHORIZED USE MAY SUBJECT YOU TO CRIMINAL \nPROSECUTION.\n\nEVIDENCE OF UNAUTHORIZED USE COLLECTED DURING MONITORING MAY BE USED FOR \nADMINISTRATIVE, CRIMINAL, OR OTHER ADVERSE ACTION. USE OF THIS SYSTEM \nCONSTITUTES CONSENT TO MONITORING FOR THESE PURPOSES.\n",
+            "status": true,
+            "system_info_available": true
+        }
+    },
+    "hardening_configuration": {
+        "access_policies": {
+            "items": [
+                {
+                    "id": "0050569B-DF62-0ed3-0000-004294968945",
+                    "links": {
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004294968945"
+                    },
+                    "name": "Basic policy",
+                    "type": "AccessPolicy"
+                },
+                {
+                    "id": "0050569B-DF62-0ed3-0000-004295173504",
+                    "links": {
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004295173504"
+                    },
+                    "name": "LAB_ACP_1",
+                    "type": "AccessPolicy"
+                },
+                {
+                    "id": "0050569B-DF62-0ed3-0000-004295173617",
+                    "links": {
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies/0050569B-DF62-0ed3-0000-004295173617"
+                    },
+                    "name": "LAB_ACP_2",
+                    "type": "AccessPolicy"
+                }
+            ],
+            "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/accesspolicies?offset=0&limit=25"
+            },
+            "paging": {
+                "count": 3,
+                "limit": 25,
+                "offset": 0,
+                "pages": 1
+            }
+        },
+        "devices": {
+            "items": [
+                {
+                    "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+                    "links": {
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/devices/devicerecords/f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6"
+                    },
+                    "name": "ciscoftd01",
+                    "type": "Device"
+                }
+            ],
+            "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/devices/devicerecords?offset=0&limit=25"
+            },
+            "paging": {
+                "count": 1,
+                "limit": 25,
+                "offset": 0,
+                "pages": 1
+            }
+        },
+        "extraction_info": {
+            "compliance_validated": false,
+            "extracted_by": "admin",
+            "fmc_host": "10.12.201.212",
+            "hardening_applied": false,
+            "timestamp": "20250902103317"
+        },
+        "network_objects": {
+            "items": [
+                {
+                    "id": "cb7116e8-66a6-480b-8f9b-295191a0940a",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/cb7116e8-66a6-480b-8f9b-295191a0940a"
+                    },
+                    "name": "any-ipv4",
+                    "type": "Network"
+                },
+                {
+                    "id": "0050569B-DF62-0ed3-0000-004295214249",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/0050569B-DF62-0ed3-0000-004295214249"
+                    },
+                    "name": "inside_network",
+                    "type": "Network"
+                },
+                {
+                    "id": "86caab8a-9bdd-420d-858b-5690fde8ce58",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/86caab8a-9bdd-420d-858b-5690fde8ce58"
+                    },
+                    "name": "IPv4-Benchmark-Tests",
+                    "type": "Network"
+                },
+                {
+                    "id": "f0ce41ae-6ee9-4e00-8762-da9370c4fee5",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/f0ce41ae-6ee9-4e00-8762-da9370c4fee5"
+                    },
+                    "name": "IPv4-Link-Local",
+                    "type": "Network"
+                },
+                {
+                    "id": "5622db1c-5cd5-4199-a4c8-d8f86dec3bd4",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/5622db1c-5cd5-4199-a4c8-d8f86dec3bd4"
+                    },
+                    "name": "IPv4-Multicast",
+                    "type": "Network"
+                },
+                {
+                    "id": "95916354-5aa1-4057-8eea-b42a5a207abc",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/95916354-5aa1-4057-8eea-b42a5a207abc"
+                    },
+                    "name": "IPv4-Private-10.0.0.0-8",
+                    "type": "Network"
+                },
+                {
+                    "id": "b7a78a7d-20c5-47b2-b02f-86b4360112ac",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/b7a78a7d-20c5-47b2-b02f-86b4360112ac"
+                    },
+                    "name": "IPv4-Private-172.16.0.0-12",
+                    "type": "Network"
+                },
+                {
+                    "id": "1dcefdd8-07f7-438a-9221-97d63710614e",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/1dcefdd8-07f7-438a-9221-97d63710614e"
+                    },
+                    "name": "IPv4-Private-192.168.0.0-16",
+                    "type": "Network"
+                },
+                {
+                    "id": "1047b91f-db3a-45b8-9c10-f48ed3f0c3d6",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/1047b91f-db3a-45b8-9c10-f48ed3f0c3d6"
+                    },
+                    "name": "IPv6-IPv4-Mapped",
+                    "type": "Network"
+                },
+                {
+                    "id": "192c14f2-39d9-409d-81e9-357793bdf1ec",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/192c14f2-39d9-409d-81e9-357793bdf1ec"
+                    },
+                    "name": "IPv6-Link-Local",
+                    "type": "Network"
+                },
+                {
+                    "id": "0434674f-87f8-4e17-810e-97100407858b",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/0434674f-87f8-4e17-810e-97100407858b"
+                    },
+                    "name": "IPv6-Private-Unique-Local-Addresses",
+                    "type": "Network"
+                },
+                {
+                    "id": "04ea3f1f-f5a9-4eca-b051-487ebeb4c97f",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/04ea3f1f-f5a9-4eca-b051-487ebeb4c97f"
+                    },
+                    "name": "IPv6-to-IPv4-Relay-Anycast",
+                    "type": "Network"
+                },
+                {
+                    "id": "0050569B-DF62-0ed3-0000-004295153903",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/0050569B-DF62-0ed3-0000-004295153903"
+                    },
+                    "name": "NET_APPS",
+                    "type": "Network"
+                },
+                {
+                    "id": "0050569B-DF62-0ed3-0000-004295153885",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/0050569B-DF62-0ed3-0000-004295153885"
+                    },
+                    "name": "NET_USERS",
+                    "type": "Network"
+                },
+                {
+                    "id": "0050569B-DF62-0ed3-0000-004295214267",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/0050569B-DF62-0ed3-0000-004295214267"
+                    },
+                    "name": "outside_network",
+                    "type": "Network"
+                },
+                {
+                    "id": "0050569B-DF62-0ed3-0000-004295215495",
+                    "links": {
+                        "parent": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networkaddresses",
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks/0050569B-DF62-0ed3-0000-004295215495"
+                    },
+                    "name": "Vlan_197_inside",
+                    "type": "Network"
+                }
+            ],
+            "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/object/networks?offset=0&limit=25"
+            },
+            "paging": {
+                "count": 16,
+                "limit": 25,
+                "offset": 0,
+                "pages": 1
+            }
+        },
+        "network_policies": {
+            "items": [
+                {
+                    "id": "4897c8f4-e211-4661-b0a4-25b0826cded9",
+                    "links": {
+                        "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/prefilterpolicies/4897c8f4-e211-4661-b0a4-25b0826cded9"
+                    },
+                    "name": "Default Prefilter Policy",
+                    "type": "PrefilterPolicy"
+                }
+            ],
+            "links": {
+                "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/policy/prefilterpolicies?offset=0&limit=25"
+            },
+            "paging": {
+                "count": 1,
+                "limit": 25,
+                "offset": 0,
+                "pages": 1
+            }
+        },
+        "system_info": {
+            "items": [
+                {
+                    "hostname": "fmc01",
+                    "lspVersion": "lsp-rel-20250825-1804",
+                    "model": "Cisco Secure Firewall Management Center for VMWare 300",
+                    "platform": "66",
+                    "serialNumber": "None",
+                    "serverVersion": "7.6.1 (build 291)",
+                    "sruVersion": "2025-08-27-001-vrt",
+                    "type": "ServerVersion",
+                    "uptime": "3 days  19:53",
+                    "uuid": "6b8b5362-62e5-11f0-a5d0-bad5f40e7255",
+                    "vdbVersion": "build 410 ( 2025-07-15 15:20:09 )"
+                }
+            ],
+            "links": {
+                "self": "https://10.12.201.212/api/fmc_platform/v1/info/serverversion?offset=0&limit=25"
+            },
+            "paging": {
+                "count": 1,
+                "limit": 25,
+                "offset": 0,
+                "pages": 1
+            }
+        }
+    },
+    "report_info": {
+        "fmc_host": "10.12.201.212",
+        "generated_by": "admin",
+        "report_version": "1.0",
+        "timestamp": "20250902103317",
+        "title": "FMC Security Hardening Compliance Report"
+    },
+    "summary": {
+        "compliance_percentage": "50.0",
+        "critical_failures": [],
+        "failed_checks": "3",
+        "fmc_host": "10.12.201.212",
+        "overall_status": "NON_COMPLIANT",
+        "passed_checks": "3",
+        "recommendations": [
+            "Hostname must follow H-Cloud naming convention: <DataCenterLocation>-<NetworkZone>-<Institution/cluster>-<DevicePurpose><Running Numbers>",
+            "Configure session timeout to 15 minutes or less for enhanced security",
+            "Monitor system health through available FMC platform APIs and configure manual health monitoring through GUI"
+        ],
+        "timestamp": "20250902103317",
+        "total_checks": "6"
+    }
+}

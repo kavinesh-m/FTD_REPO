@@ -1,0 +1,107 @@
+{
+  "ftd_discovery_report": {
+    "timestamp": "2025-09-02T03:33:48Z",
+    "fmc_host": "10.12.201.212",
+    "test_results": {
+      "managed_devices_access": "PASS",
+      "ftd_devices_found": true,
+      "ftd_detailed_query_enabled": true
+    },
+    "summary": {
+      "total_devices": 1,
+      "connected_devices": 0,
+      "disconnected_devices": 1,
+      "query_failed_devices": 0,
+      "connectivity_rate_percent": 0.0,
+      "bulk_operations_enabled": false,
+      "parallel_operations_enabled": false
+    },
+    "device_inventory": [
+      {
+        "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+        "type": "Device",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/devices/devicerecords/f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6"
+        },
+        "name": "ciscoftd01"
+      }
+    ],
+    "connected_devices": [],
+    "disconnected_devices": [
+      {
+        "deploymentStatus": "DEPLOYED",
+        "id": "f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6",
+        "type": "Device",
+        "links": {
+          "self": "https://10.12.201.212/api/fmc_config/v1/domain/e276abec-e0f2-11e3-8169-6d9ed49b625f/devices/devicerecords/f4cb4e6e-62e7-11f0-9cd9-f3f6d66f5db6"
+        },
+        "name": "ciscoftd01",
+        "description": "NOT SUPPORTED",
+        "model": "Cisco Firepower Threat Defense for VMware",
+        "modelId": "A",
+        "modelNumber": "75",
+        "modelType": "Sensor",
+        "healthStatus": "green",
+        "healthMessage": "6.7% of 15.0M used",
+        "sw_version": "7.4.2",
+        "healthPolicy": {
+          "id": "2d95b9c4-62e7-11f0-95d5-8a13f50e7255",
+          "name": "Initial_Health_Policy 2025-07-17 08:22:29",
+          "type": "HealthPolicy"
+        },
+        "accessPolicy": {
+          "name": "Basic policy",
+          "id": "0050569b-df62-0ed3-0000-004294968945",
+          "type": "AccessPolicy"
+        },
+        "advanced": {
+          "enableOGS": true
+        },
+        "hostName": "10.12.201.213",
+        "license_caps": [
+          "ESSENTIALS",
+          "CARRIER",
+          "MALWARE_DEFENSE",
+          "IPS",
+          "URL"
+        ],
+        "performanceTier": "FTDv10",
+        "keepLocalEvents": false,
+        "prohibitPacketTransfer": false,
+        "isConnected": true,
+        "ftdMode": "ROUTED",
+        "analyticsOnly": false,
+        "metadata": {
+          "readOnly": {
+            "state": false
+          },
+          "inventoryData": {
+            "cpuCores": "1 CPU (16 cores)",
+            "cpuType": "CPU Xeon 5500 series 2600 MHz",
+            "memoryInMB": "32256 MB RAM"
+          },
+          "deviceSerialNumber": "9ABFGLWGM6K",
+          "domain": {
+            "name": "Global",
+            "id": "e276abec-e0f2-11e3-8169-6d9ed49b625f",
+            "type": "Domain"
+          },
+          "isMultiInstance": false,
+          "snortVersion": "3.1.53.200-107",
+          "vdbVersion": "Build 410 - 2025-07-15 15:20:09.0",
+          "lspVersion": "lsp-rel-20250825-1804",
+          "clusterBootstrapSupported": true
+        },
+        "snortEngine": "SNORT3",
+        "isFWaaS": false,
+        "managementState": "MANAGED"
+      }
+    ],
+    "operational_flags": {
+      "ftd_devices_found": true,
+      "ftd_bulk_operations_enabled": false,
+      "ftd_parallel_operations": false
+    }
+  }
+}
+
