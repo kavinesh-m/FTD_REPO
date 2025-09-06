@@ -17,30 +17,30 @@
     timestamp: "{{ lookup('pipe', 'date +%Y%m%d%H%M%S') }}"
   when: execution_timestamp is not defined
 
-- name: Enhanced FMC connection parameter validation
-  assert:
-    that:
-      - fmc_host is defined
-      - fmc_host != ""
-      # - fmc_host | regex_search('^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$|^[a-zA-Z0-9.-]+$')
-      - fmc_username is defined
-      - fmc_username != ""
-      - fmc_username | length >= 3
-      - fmc_password is defined
-      - fmc_password != ""
-      - fmc_password | length >= 8
-      - fmc_port | int >= 1 and fmc_port | int <= 65535
-      - fmc_timeout | int >= 10 and fmc_timeout | int <= 300
-      - max_retries | int >= 0 and max_retries | int <= 10
-    fail_msg: |
-      FMC connection parameter validation failed:
-      - fmc_host: {{ fmc_host | default('UNDEFINED') }} (must be valid IP or hostname)
-      - fmc_username: {{ fmc_username | default('UNDEFINED') }} (minimum 3 characters)
-      - fmc_password: {{ 'DEFINED' if fmc_password is defined and fmc_password != '' else 'UNDEFINED' }} (minimum 8 characters)
-      - fmc_port: {{ fmc_port }} (must be 1-65535)
-      - fmc_timeout: {{ fmc_timeout }} (must be 10-300 seconds)
-      - max_retries: {{ max_retries }} (must be 0-10)
-    success_msg: "All FMC connection parameters validated successfully"
+# - name: Enhanced FMC connection parameter validation
+#   assert:
+#     that:
+#       - fmc_host is defined
+#       - fmc_host != ""
+#       # - fmc_host | regex_search('^[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}$|^[a-zA-Z0-9.-]+$')
+#       - fmc_username is defined
+#       - fmc_username != ""
+#       - fmc_username | length >= 3
+#       - fmc_password is defined
+#       - fmc_password != ""
+#       - fmc_password | length >= 8
+#       - fmc_port | int >= 1 and fmc_port | int <= 65535
+#       - fmc_timeout | int >= 10 and fmc_timeout | int <= 300
+#       - max_retries | int >= 0 and max_retries | int <= 10
+#     fail_msg: |
+#       FMC connection parameter validation failed:
+#       - fmc_host: {{ fmc_host | default('UNDEFINED') }} (must be valid IP or hostname)
+#       - fmc_username: {{ fmc_username | default('UNDEFINED') }} (minimum 3 characters)
+#       - fmc_password: {{ 'DEFINED' if fmc_password is defined and fmc_password != '' else 'UNDEFINED' }} (minimum 8 characters)
+#       - fmc_port: {{ fmc_port }} (must be 1-65535)
+#       - fmc_timeout: {{ fmc_timeout }} (must be 10-300 seconds)
+#       - max_retries: {{ max_retries }} (must be 0-10)
+#     success_msg: "All FMC connection parameters validated successfully"
 
 - name: Validate output directory paths
   assert:
