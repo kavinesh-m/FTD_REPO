@@ -32,30 +32,30 @@
         - ftd_devices_found | default(false) | bool
 
     # Rule management (time-based)
-    - role: fmc_rule_management
-      tags: ['rules', 'management', 'fmc']
-      when: 
-        - manage_rules | default(true) | bool
-        - rule_expiry_check_enabled | default(true) | bool
+    # - role: fmc_rule_management
+    #   tags: ['rules', 'management', 'fmc']
+    #   when: 
+    #     - manage_rules | default(true) | bool
+    #     - rule_expiry_check_enabled | default(true) | bool
 
     # FTD Rule management (device-level)
-    - role: ftd_rule_management
-      tags: ['ftd', 'rules', 'management']
-      when: 
-        - manage_ftd_rules | default(true) | bool
-        - ftd_devices_found | default(false) | bool
-        - ftd_rule_management_enabled | default(true) | bool
+    # - role: ftd_rule_management
+    #   tags: ['ftd', 'rules', 'management']
+    #   when: 
+    #     - manage_ftd_rules | default(true) | bool
+    #     - ftd_devices_found | default(false) | bool
+    #     - ftd_rule_management_enabled | default(true) | bool
 
     # Packet tracer
-    - role: fmc_packet_tracer
-      tags: ['packet', 'tracer']
-      when: 
-        - run_packet_tracer | default(false) | bool
-        - source_ip is defined
-        - dest_ip is defined
-        - interface_id is defined
-        - interface_name is defined
-        - interface_type is defined
+    # - role: fmc_packet_tracer
+    #   tags: ['packet', 'tracer']
+    #   when: 
+    #     - run_packet_tracer | default(false) | bool
+    #     - source_ip is defined
+    #     - dest_ip is defined
+    #     - interface_id is defined
+    #     - interface_name is defined
+    #     - interface_type is defined
 
   post_tasks:
     - name: Display Final Summary
