@@ -1,7 +1,7 @@
-[fmc_hosts]
-fmc01 ansible_host=10.12.201.212
+[fmc_servers]
+fmc-sandbox ansible_host=10.12.201.212
 
-[fmc_hosts:vars]
+[fmc_servers:vars]
 ansible_connection=httpapi
 ansible_network_os=cisco.fmcansible.fmc
 ansible_httpapi_use_ssl=True
