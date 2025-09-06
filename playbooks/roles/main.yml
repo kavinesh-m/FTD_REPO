@@ -1,6 +1,6 @@
 ---
 - name: FMC Complete Automation Suite (Role-based)
-  hosts: fmc_servers
+  hosts: fmc01
   gather_facts: false
   
   roles:
